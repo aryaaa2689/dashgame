@@ -203,8 +203,8 @@ export class RaceEngine {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.camera = new THREE.PerspectiveCamera(62, canvas.clientWidth / canvas.clientHeight, 0.35, 900);
-    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 110, 420);
-    this.scene.background = new THREE.Color(def.fog);
+    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 140, 480);
+    this.scene.background = new THREE.Color(def.sky[1]);
 
     this.speedLineMaterial = new THREE.LineBasicMaterial({
       color: 0xb8ffff,
@@ -805,10 +805,9 @@ export class RaceEngine {
     this.camera.fov += (fovWant - this.camera.fov) * Math.min(1, dt * 4.5);
     this.camera.updateProjectionMatrix();
 
-    const streak = Math.max(0, Math.min(1, (p.speed - 52) / 38 + p.boost * 0.45 + Math.max(0, p.speedMult - 1) * 0.28));
-    this.speedLineMaterial.opacity = streak * 0.48;
+    this.speedLineMaterial.opacity = 0;
     for (const sLine of this.speedLines) {
-      sLine.line.visible = streak > 0.04;
+      sLine.line.visible = false;
       if (!sLine.line.visible) continue;
       const s0 = p.dist + 6 + ((this.time * 90 + sLine.phase) % 50);
       const s1 = s0 - sLine.len;

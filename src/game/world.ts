@@ -150,9 +150,9 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
       depthWrite: false,
       fog: false,
       uniforms: {
-        top: { value: new THREE.Color(warm ? "#f2b06a" : "#7ec8f0") },
-        mid: { value: new THREE.Color(warm ? "#ffd7a8" : "#cfe9f8") },
-        bottom: { value: new THREE.Color(warm ? "#ffe8c8" : "#e7f3ea") },
+        top: { value: new THREE.Color(warm ? "#f2b06a" : "#6eb6e4") },
+        mid: { value: new THREE.Color(warm ? "#ffd7a8" : "#c5dcea") },
+        bottom: { value: new THREE.Color(warm ? "#ffe8c8" : "#dce6ee") },
         sunDir: { value: new THREE.Vector3(0.35, 0.62, 0.4).normalize() },
       },
       vertexShader: `varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
@@ -206,10 +206,11 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
   const pad = 200;
   const tw = maxX - minX + pad * 2;
   const td = maxZ - minZ + pad * 2;
-  const terrainGeo = new THREE.PlaneGeometry(tw, td, 48, 48);
+  const terrainGeo = new THREE.PlaneGeometry(tw, td, 80, 80);
   terrainGeo.rotateX(-Math.PI / 2);
   const pos = terrainGeo.attributes.position;
-  const sampleStep = Math.max(1, Math.floor(pts.length / 110));
+  const sampleStep = Math.max(1, Math.floor(pts.length / 160));
+  const trench = halfW + 10;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + (minX + maxX) / 2;
     const z = pos.getZ(i) + (minZ + maxZ) / 2;
@@ -224,23 +225,26 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
       }
     }
     const dist = Math.sqrt(nearest);
-    let h = ty - 0.55;
-    if (dist > halfW + 6) {
-      const t = Math.min(1, (dist - halfW - 6) / 55);
+    let h: number;
+    if (dist < trench) {
+      // Keep every triangle that crosses the circuit well below the tarmac.
+      h = ty - 2.8;
+    } else {
+      const t = Math.min(1, (dist - trench) / 48);
       const n =
         Math.sin(x * 0.012) * 2.4 +
         Math.sin(z * 0.01 + 1.7) * 2.1 +
         Math.sin(x * 0.031 + z * 0.02) * 1.3;
-      h += n * t * t;
+      h = ty - 1.1 + n * t * t;
     }
     pos.setXYZ(i, x, h, z);
   }
   pos.needsUpdate = true;
   terrainGeo.computeVertexNormals();
-  const grass = loadTex("/tex/grass.jpg", 42, 42);
+  const grass = loadTex("/tex/meadow.jpg", 28, 28);
   const terrain = new THREE.Mesh(
     terrainGeo,
-    new THREE.MeshStandardMaterial({ map: grass, roughness: 0.95, metalness: 0 }),
+    new THREE.MeshStandardMaterial({ map: grass, color: 0xb7c4a4, roughness: 0.95, metalness: 0 }),
   );
   terrain.receiveShadow = true;
   group.add(terrain);
@@ -272,27 +276,42 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
   water.position.set((minX + maxX) / 2 + 30, minY - 7.5, (minZ + maxZ) / 2 - 20);
   group.add(water);
 
-  const asphalt = loadTex("/tex/asphalt.jpg", 1, 18);
-  const road = new THREE.Mesh(
-    buildRibbon(pts, halfW, 0.07, path.step, 14),
-    new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.78, metalness: 0.06 }),
-  );
-  road.receiveShadow = true;
-  group.add(road);
-
-  const marks = new THREE.Mesh(
-    buildRibbon(pts, halfW, 0.085, path.step, 14),
-    new THREE.MeshBasicMaterial({ map: markingsTexture(), transparent: true, depthWrite: false }),
-  );
-  group.add(marks);
-
   const dirt = loadTex("/tex/dirt.jpg", 1, 16);
   const shoulder = new THREE.Mesh(
-    buildRibbon(pts, halfW + 3.2, -0.02, path.step, 16),
-    new THREE.MeshStandardMaterial({ map: dirt, roughness: 1, metalness: 0 }),
+    buildRibbon(pts, halfW + 3.4, 0.02, path.step, 16),
+    new THREE.MeshStandardMaterial({ map: dirt, color: 0x8a7358, roughness: 1, metalness: 0 }),
   );
   shoulder.receiveShadow = true;
   group.add(shoulder);
+
+  const asphalt = loadTex("/tex/asphalt.jpg", 1, 22);
+  const roadMat = new THREE.MeshStandardMaterial({
+    map: asphalt,
+    color: 0x3a3f46,
+    roughness: 0.82,
+    metalness: 0.05,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  const road = new THREE.Mesh(buildRibbon(pts, halfW, 0.22, path.step, 14), roadMat);
+  road.receiveShadow = true;
+  road.renderOrder = 1;
+  group.add(road);
+
+  const marks = new THREE.Mesh(
+    buildRibbon(pts, halfW, 0.24, path.step, 14),
+    new THREE.MeshBasicMaterial({
+      map: markingsTexture(),
+      transparent: true,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4,
+    }),
+  );
+  marks.renderOrder = 2;
+  group.add(marks);
 
   const railMat = new THREE.MeshStandardMaterial({ color: 0xa8b0ba, roughness: 0.32, metalness: 0.72 });
   for (const sign of [-1, 1] as const) {
@@ -309,7 +328,7 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
   const dummy = new THREE.Object3D();
   const bark = loadTex("/tex/bark.jpg", 1, 2);
   const leaf = loadTex("/tex/leaves.jpg", 1, 1);
-  const TREE_N = 110;
+  const TREE_N = 160;
   const CAN_N = TREE_N * 3;
   const trunkMesh = new THREE.InstancedMesh(
     new THREE.CylinderGeometry(0.32, 0.5, 8, 7),
@@ -332,11 +351,11 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
   let ti = 0;
   let ci = 0;
   let ri = 0;
-  for (let i = 0; i < pts.length; i += 5) {
+  for (let i = 0; i < pts.length; i += 3) {
     const p = pts[i];
     for (const sign of [-1, 1]) {
-      if (rnd() > 0.7 || ti >= TREE_N) continue;
-      const dist = halfW + 13 + rnd() * 26;
+      if (rnd() > 0.55 || ti >= TREE_N) continue;
+      const dist = halfW + 8 + rnd() * 22;
       const sx = Math.cos(p.yaw) * sign;
       const sz = -Math.sin(p.yaw) * sign;
       const x = p.x + sx * dist;
