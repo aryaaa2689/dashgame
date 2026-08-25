@@ -2,7 +2,7 @@
 
 export type Segment = { len: number; curve: number; slope: number };
 
-export type PickupOp = "+" | "-" | "x";
+export type PickupOp = "+" | "-" | "x" | "÷";
 
 export type Feature = {
   s: number; // distance along track
@@ -10,7 +10,7 @@ export type Feature = {
   half: number; // half width in lane units
   type: "pickup" | "ramp" | "bump";
   op?: PickupOp; // arithmetic operator for pickups
-  value: number; // magnitude used both for gameplay effect and HUD label (+3 / -2 / x3)
+  value: number; // magnitude used both for gameplay effect and HUD label (+5 / -3 / x2 / ÷2)
 };
 
 export type TrackDef = {
@@ -29,10 +29,10 @@ export type TrackDef = {
 export const TRACKS: TrackDef[] = [
   {
     id: "emerald-canopy",
-    name: "Emerald Canopy",
-    subtitle: "Gentle curves • Wide boosts",
+    name: "Emerald Speedway",
+    subtitle: "Wide 4-lane circuit • Big arithmetic boosts",
     seed: 1337,
-    width: 15,
+    width: 28,
     segments: [
       { len: 90, curve: 0, slope: 0 },
       { len: 120, curve: 0.012, slope: 0.05 },
@@ -52,10 +52,10 @@ export const TRACKS: TrackDef[] = [
   },
   {
     id: "vine-spiral",
-    name: "Vine Spiral",
-    subtitle: "Tight turns • Steep drops",
+    name: "Apex Raceway",
+    subtitle: "High-speed turns • Division traps",
     seed: 90210,
-    width: 13,
+    width: 30,
     segments: [
       { len: 80, curve: 0, slope: 0 },
       { len: 100, curve: 0.026, slope: 0.08 },
@@ -75,10 +75,10 @@ export const TRACKS: TrackDef[] = [
   },
   {
     id: "thunder-falls",
-    name: "Thunder Falls",
-    subtitle: "Long ramps • Hazard alley",
+    name: "Thunder GP",
+    subtitle: "Mega ramp jump • Speed multipliers",
     seed: 4242,
-    width: 16,
+    width: 30,
     segments: [
       { len: 100, curve: 0, slope: 0.02 },
       { len: 140, curve: -0.01, slope: 0.12 },
@@ -98,10 +98,10 @@ export const TRACKS: TrackDef[] = [
   },
   {
     id: "sunset-lagoon",
-    name: "Sunset Lagoon",
-    subtitle: "Bouncy bumps • Sprint finish",
+    name: "Sunset Circuit",
+    subtitle: "Sweeping straights • Sprint finish",
     seed: 777,
-    width: 14,
+    width: 28,
     segments: [
       { len: 110, curve: 0, slope: 0 },
       { len: 130, curve: 0.018, slope: -0.05 },
@@ -189,56 +189,79 @@ export function buildPath(def: TrackDef): TrackPath {
     }
   }
 
-  // deterministic features
+  // deterministic arithmetic features (+, -, x, ÷)
   const rnd = mulberry32(def.seed);
   const features: Feature[] = [];
-  for (let s = 80; s < total - 90; s += 26 + rnd() * 26) {
-    const r = rnd();
-    const lane = (rnd() * 2 - 1) * 0.72;
-    if (r < 0.34) {
-      // "+N" speed pickup
+
+  // Spread features across the wide 4-lane road:
+  // Lanes can be roughly -0.75, -0.25, 0.25, 0.75
+  const lanes = [-0.72, -0.24, 0.24, 0.72];
+
+  for (let s = 70; s < total - 80; s += 24 + rnd() * 20) {
+    const pickLane = lanes[Math.floor(rnd() * lanes.length)];
+    const roll = rnd();
+
+    if (pickLane === undefined) continue;
+
+    if (roll < 0.32) {
+      // "+N" speed addition pickup (Green)
       features.push({
         s: Math.round(s),
-        lane,
-        half: 0.3,
+        lane: pickLane,
+        half: 0.22,
         type: "pickup",
         op: "+",
-        value: 1 + Math.floor(rnd() * 6),
+        value: 2 + Math.floor(rnd() * 6), // +2 to +7
       });
-    } else if (r < 0.58) {
-      // "-N" penalty pickup
+    } else if (roll < 0.52) {
+      // "-N" speed subtraction pickup (Orange/Red)
       features.push({
         s: Math.round(s),
-        lane,
-        half: 0.3,
+        lane: pickLane,
+        half: 0.22,
         type: "pickup",
         op: "-",
-        value: 1 + Math.floor(rnd() * 5),
+        value: 2 + Math.floor(rnd() * 5), // -2 to -6
       });
-    } else if (r < 0.72) {
-      features.push({ s: Math.round(s), lane, half: 0.24, type: "ramp", value: 2 });
-    } else if (r < 0.84) {
-      features.push({ s: Math.round(s), lane, half: 0.22, type: "bump", value: -1 });
-    } else {
-      // rare "xN" multiplier pickup - big risk/reward
+    } else if (roll < 0.68) {
+      // "÷N" speed division trap (Pink/Crimson) - cuts speed!
       features.push({
         s: Math.round(s),
-        lane,
-        half: 0.3,
+        lane: pickLane,
+        half: 0.22,
+        type: "pickup",
+        op: "÷",
+        value: 2 + Math.floor(rnd() * 2), // ÷2 or ÷3
+      });
+    } else if (roll < 0.82) {
+      // "xN" speed multiplier pickup (Gold/Yellow) - super boost!
+      features.push({
+        s: Math.round(s),
+        lane: pickLane,
+        half: 0.22,
         type: "pickup",
         op: "x",
-        value: 2 + Math.floor(rnd() * 3),
+        value: 2 + Math.floor(rnd() * 2), // x2 or x3
       });
+    } else if (roll < 0.92) {
+      // Ramp jump
+      features.push({ s: Math.round(s), lane: pickLane, half: 0.2, type: "ramp", value: 2 });
+    } else {
+      // Bumpy hazard
+      features.push({ s: Math.round(s), lane: pickLane, half: 0.2, type: "bump", value: -1 });
     }
-    if (rnd() > 0.6) {
-      const bad = r < 0.5;
+
+    // Often place a contrasting gate on an adjacent lane (e.g. +5 vs ÷2 risk/reward choice!)
+    if (rnd() > 0.35) {
+      const otherLane = lanes.find((l) => Math.abs(l - pickLane) > 0.3 && Math.abs(l - pickLane) < 0.8) ?? -pickLane;
+      const goodChoice = roll >= 0.32; // if main was bad, give a good choice, and vice versa
       features.push({
-        s: Math.round(s) + 6,
-        lane: -lane * 0.8,
-        half: 0.28,
+        s: Math.round(s),
+        lane: otherLane,
+        half: 0.22,
         type: "pickup",
-        op: bad ? "-" : "+",
-        value: bad ? 1 + Math.floor(rnd() * 4) : 1 + Math.floor(rnd() * 4),
+        op: goodChoice ? "+" : "x",
+        value: goodChoice ? 3 + Math.floor(rnd() * 5) : 2,
       });
     }
   }
@@ -270,7 +293,7 @@ export function buildPath(def: TrackDef): TrackPath {
     worldAt(s: number, lane: number) {
       const p = path.sample(s);
       const side = path.sideVector(p.yaw);
-      const off = lane * (def.width / 2 - 1.1);
+      const off = lane * (def.width / 2 - 1.5);
       return { x: p.x + side.x * off, y: p.y, z: p.z + side.z * off, yaw: p.yaw };
     },
   };
@@ -279,28 +302,28 @@ export function buildPath(def: TrackDef): TrackPath {
 }
 
 export const CHAR_COLORS = [
-  "#ffffff",
-  "#4bb4ff",
-  "#ff5a5a",
-  "#ffd93d",
-  "#4bead0",
-  "#b76bff",
-  "#ff8fd0",
-  "#8dff6b",
+  "#e63946", // Racing Red
+  "#00f0ff", // Electric Cyan
+  "#ffd166", // Cyber Yellow
+  "#35e08a", // Emerald Green
+  "#ff70a6", // Neon Pink
+  "#7052ff", // Deep Purple
+  "#ff9f1c", // Blaze Orange
+  "#ffffff", // Alpine White
 ];
 
 export const HATS = ["none", "cap", "leaf", "crown", "goggles"] as const;
 export type Hat = (typeof HATS)[number];
 
 export const BOT_NAMES = [
-  "Zippy",
-  "Mango",
-  "Bloop",
-  "Koko",
-  "Pip",
-  "Tuki",
-  "Nimbo",
-  "Wobbi",
-  "Yuzu",
-  "Doko",
+  "Apex",
+  "Nitro",
+  "Viper",
+  "Blaze",
+  "Storm",
+  "Phantom",
+  "Shadow",
+  "Bolt",
+  "Turbo",
+  "RacerX",
 ];

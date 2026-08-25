@@ -71,7 +71,7 @@ export function makeCharacter(color: string, hat: string): CharParts {
 
   // ---- torso (slightly egg shaped, rounded) with a belt/trim band
   const torso = new THREE.Mesh(bodyGeo, skinMat);
-  torso.scale.set(0.74, 0.82, 0.68);
+  torso.scale.set(0.66, 0.9, 0.6);
   torso.position.y = 0.98;
   torso.castShadow = true;
   torso.receiveShadow = true;
@@ -128,14 +128,36 @@ export function makeCharacter(color: string, hat: string): CharParts {
     head.add(highlight);
   }
 
-  // small nose + rosy cheeks for warmth without being cartoon-flat
+  // compact sports visor: makes the racers feel more like modern game
+  // avatars and less like oversized toddler dolls while keeping expression.
+  const visor = new THREE.Mesh(
+    new THREE.BoxGeometry(0.72, 0.18, 0.055),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x111923,
+      roughness: 0.18,
+      metalness: 0.15,
+      clearcoat: 1,
+      transparent: true,
+      opacity: 0.78,
+    }),
+  );
+  visor.position.set(0, 0.035, 0.61);
+  head.add(visor);
+  const visorGlow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.56, 0.025, 0.062),
+    new THREE.MeshBasicMaterial({ color: 0x76ffe0, transparent: true, opacity: 0.7 }),
+  );
+  visorGlow.position.set(0, 0.08, 0.645);
+  head.add(visorGlow);
+
+  // small nose + toned-down cheeks for warmth without a childish doll look
   const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), skinToneMat);
   nose.position.set(0, -0.06, 0.6);
   head.add(nose);
   const cheekMat = new THREE.MeshStandardMaterial({
     color: 0xff96a8,
     transparent: true,
-    opacity: 0.45,
+    opacity: 0.12,
     roughness: 1,
   });
   for (const side of [-1, 1]) {

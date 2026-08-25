@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: var(--font-barlow), "Arial Narrow", system-ui, sans-serif;
-  --font-mono: var(--font-mono-tel), ui-monospace, "SFMono-Regular", monospace;
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
   --color-hud: #d7e4dd;
-  --color-accent: #35e08a;
+  --color-accent: #00f0ff;
 }
 
 :root {

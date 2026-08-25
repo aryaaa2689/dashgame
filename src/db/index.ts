@@ -3,22 +3,32 @@ import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
 
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
-}
+export const hasDb = !!databaseUrl;
 
 const globalForDb = globalThis as typeof globalThis & {
   __arenaNextJsPostgresqlPool?: Pool;
 };
 
-export const pool =
-  globalForDb.__arenaNextJsPostgresqlPool ??
-  new Pool({
-    connectionString: databaseUrl,
-  });
+let poolInstance: Pool | null = null;
+let dbInstance: ReturnType<typeof drizzle> | null = null;
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__arenaNextJsPostgresqlPool = pool;
+if (databaseUrl) {
+  try {
+    poolInstance =
+      globalForDb.__arenaNextJsPostgresqlPool ??
+      new Pool({
+        connectionString: databaseUrl,
+      });
+
+    if (process.env.NODE_ENV !== "production") {
+      globalForDb.__arenaNextJsPostgresqlPool = poolInstance;
+    }
+
+    dbInstance = drizzle(poolInstance);
+  } catch (err) {
+    console.warn("PostgreSQL initialization failed, using in-memory store fallback:", err);
+  }
 }
 
-export const db = drizzle(pool);
+export const pool = poolInstance;
+export const db = dbInstance;
