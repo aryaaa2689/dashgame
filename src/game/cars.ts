@@ -204,9 +204,10 @@ export function animateCar(
 
   const squash = extras?.landSquash ?? 0;
   const slip = extras?.slip ?? 0;
-  p.body.rotation.z += (-steerAngle * 0.1 + slip * 0.12 + stumble * 0.2 - p.body.rotation.z) * Math.min(1, dt * 10);
-  p.body.rotation.x += ((extras?.pitch ?? 0) * 0.1 - speed01 * 0.025 - squash * 0.1 - p.body.rotation.x) * Math.min(1, dt * 10);
-  p.body.position.y = airborne * 0.12 - squash * 0.1;
+  const lean = THREE.MathUtils.clamp(-steerAngle * 0.08 + slip * 0.05 + stumble * 0.06, -0.14, 0.14);
+  p.body.rotation.z += (lean - p.body.rotation.z) * Math.min(1, dt * 10);
+  p.body.rotation.x += ((extras?.pitch ?? 0) * 0.08 - speed01 * 0.02 - squash * 0.08 - p.body.rotation.x) * Math.min(1, dt * 10);
+  p.body.position.y = airborne * 0.08 - squash * 0.08;
 
   const on = boostActive || speed01 > 1.12;
   const fm = p.flame.material as THREE.MeshBasicMaterial;

@@ -76,6 +76,29 @@ const DRAG = 0.007;
 const ROLL_RES = 2.2;
 const LANE_LIMIT = 0.94;
 const WALL_REST = 0.28;
+const CAR_GROUND = 0.13;
+
+const _fwd = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _up = new THREE.Vector3();
+const _basis = new THREE.Matrix4();
+const _quat = new THREE.Quaternion();
+
+/** Sit a car on the ribbon: +Z along the tarmac, +Y out of the deck. */
+function quatOnTrack(yaw: number, pitch: number, roll: number, into: THREE.Quaternion) {
+  const cp = Math.cos(pitch);
+  const sp = Math.sin(pitch);
+  _fwd.set(Math.sin(yaw) * cp, sp, Math.cos(yaw) * cp).normalize();
+  _right.set(Math.cos(yaw), 0, -Math.sin(yaw)).normalize();
+  _up.crossVectors(_right, _fwd).normalize();
+  _right.crossVectors(_fwd, _up).normalize();
+  if (roll) {
+    _right.applyAxisAngle(_fwd, roll);
+    _up.crossVectors(_right, _fwd).normalize();
+  }
+  _basis.makeBasis(_right, _up, _fwd);
+  return into.setFromRotationMatrix(_basis);
+}
 
 function namePlate(text: string, accent: string, isPlayer: boolean) {
   const c = document.createElement("canvas");
@@ -178,7 +201,7 @@ export class RaceEngine {
   private dustMat!: THREE.SpriteMaterial;
   private dustSpawn = 0;
   private trackName: string;
-  private euler = new THREE.Euler();
+  private camUp = new THREE.Vector3(0, 1, 0);
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -203,7 +226,7 @@ export class RaceEngine {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.camera = new THREE.PerspectiveCamera(62, canvas.clientWidth / canvas.clientHeight, 0.35, 900);
-    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 140, 480);
+    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 200, 720);
     this.scene.background = new THREE.Color(def.sky[1]);
 
     this.speedLineMaterial = new THREE.LineBasicMaterial({
@@ -761,13 +784,13 @@ export class RaceEngine {
     const t = this.time;
     for (const r of this.racers) {
       const w = this.path.worldAt(r.dist, r.lane);
-      r.parts.root.position.set(w.x, w.y + r.air, w.z);
-      this.euler.set(-w.pitch * 0.92, w.yaw + Math.PI + r.slip * 0.12, w.roll * 0.85, "YXZ");
-      r.parts.root.quaternion.setFromEuler(this.euler);
+      r.parts.root.position.set(w.x, w.y + r.air + CAR_GROUND, w.z);
+      quatOnTrack(w.yaw, w.pitch, 0, _quat);
+      r.parts.root.quaternion.copy(_quat);
 
-      const steerDir = THREE.MathUtils.clamp(r.laneVel * 0.28, -1, 1);
+      const steerDir = THREE.MathUtils.clamp(r.laneVel * 0.18, -1, 1);
       animateCar(r.parts, t + r.dist * 0.015, Math.min(1.5, r.speed / 48), r.air > 0.05 ? 1 : 0, r.stumble, steerDir, r.boost > 0.2 || r.speedMult > 1.18, {
-        pitch: -r.accel * 0.012,
+        pitch: -r.accel * 0.008,
         roll: w.roll,
         slip: r.slip,
         landSquash: r.landSquash,
@@ -782,19 +805,32 @@ export class RaceEngine {
       }
     }
 
-    // Chase camera with speed look-ahead and landing dip
+    // Chase camera rides the same road frame as the cars.
     const p = this.player;
     const lookAhead = 9 + p.speed * 0.07;
-    const back = 6.1 + Math.min(1.6, p.speed * 0.012);
-    const camSample = this.path.worldAt(Math.max(0, p.dist - back), p.lane * 0.28);
-    const lookSample = this.path.worldAt(p.dist + lookAhead, p.lane * 0.16);
-    const desired = new THREE.Vector3(camSample.x, camSample.y + 2.15 + p.air * 0.28 - p.landSquash * 0.2, camSample.z);
+    const back = 7.2 + Math.min(1.6, p.speed * 0.012);
+    const pw = this.path.worldAt(p.dist, p.lane);
+    quatOnTrack(pw.yaw, pw.pitch, pw.roll * 0.55, _quat);
+    _fwd.set(0, 0, 1).applyQuaternion(_quat);
+    _up.set(0, 1, 0).applyQuaternion(_quat);
+    const desired = new THREE.Vector3(
+      pw.x - _fwd.x * back + _up.x * 2.35,
+      pw.y + p.air * 0.28 - p.landSquash * 0.2 - _fwd.y * back + _up.y * 2.35,
+      pw.z - _fwd.z * back + _up.z * 2.35,
+    );
+    const look = new THREE.Vector3(
+      pw.x + _fwd.x * lookAhead + _up.x * 0.7,
+      pw.y + p.air * 0.12 + _fwd.y * lookAhead + _up.y * 0.7,
+      pw.z + _fwd.z * lookAhead + _up.z * 0.7,
+    );
     if (this.camPos.lengthSq() === 0) {
       this.camPos.copy(desired);
-      this.camLook.set(lookSample.x, lookSample.y + 1.5, lookSample.z);
+      this.camLook.copy(look);
     }
-    this.camPos.lerp(desired, Math.min(1, dt * 6.2));
-    this.camLook.lerp(new THREE.Vector3(lookSample.x, lookSample.y + 0.85 + p.air * 0.12, lookSample.z), Math.min(1, dt * 8));
+    this.camPos.lerp(desired, Math.min(1, dt * 7.2));
+    this.camLook.lerp(look, Math.min(1, dt * 8.5));
+    this.camUp.lerp(_up, Math.min(1, dt * 5));
+    this.camera.up.copy(this.camUp);
     this.camera.position.copy(this.camPos);
     if (this.shake > 0) {
       this.camera.position.x += (Math.random() - 0.5) * this.shake;
@@ -839,7 +875,6 @@ export class RaceEngine {
       }
     }
 
-    const pw = this.path.worldAt(p.dist, p.lane);
     this.sun.position.set(pw.x + 38, pw.y + 68, pw.z + 26);
     this.sun.target.position.set(pw.x, pw.y, pw.z);
 
