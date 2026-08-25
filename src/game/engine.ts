@@ -278,6 +278,7 @@ export class RaceEngine {
       const geom = new THREE.BufferGeometry();
       geom.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
       const line = new THREE.Line(geom, this.speedLineMaterial);
+      line.visible = false;
       line.frustumCulled = false;
       line.renderOrder = 2;
       this.scene.add(line);
