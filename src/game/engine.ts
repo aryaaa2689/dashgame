@@ -191,6 +191,8 @@ export class RaceEngine {
   private stepPhase = 0;
   private lastCountdown = -1;
   private lastPlace = -1;
+  private speedLineMaterial!: THREE.LineBasicMaterial;
+  private speedLines: { line: THREE.Line; lane: number; phase: number; len: number; y: number }[] = [];
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -214,7 +216,14 @@ export class RaceEngine {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.camera = new THREE.PerspectiveCamera(58, canvas.clientWidth / canvas.clientHeight, 0.5, 1500);
-    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 110, 420);
+    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 95, 390);
+    this.speedLineMaterial = new THREE.LineBasicMaterial({
+      color: 0xcfffee,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
 
     const hemi = new THREE.HemisphereLight(0xdcefff, 0x35592f, 0.85);
     this.scene.add(hemi);
@@ -297,6 +306,23 @@ export class RaceEngine {
       }
       this.racers.push(r);
     });
+
+    for (let i = 0; i < 42; i++) {
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+      const line = new THREE.Line(geom, this.speedLineMaterial);
+      line.frustumCulled = false;
+      line.renderOrder = 2;
+      this.scene.add(line);
+      const side = i % 2 === 0 ? -1 : 1;
+      this.speedLines.push({
+        line,
+        lane: side * (1.05 + Math.random() * 0.75),
+        phase: Math.random() * 60,
+        len: 6 + Math.random() * 12,
+        y: 1.2 + Math.random() * 2.2,
+      });
+    }
 
     audio.resume();
     audio.startEngine();
@@ -674,6 +700,29 @@ export class RaceEngine {
     this.camera.lookAt(ahead.x, ahead.y + 1.9, ahead.z);
     this.camera.fov += (58 + Math.min(16, (p.speedMult - 1) * 10 + p.boost * 8) - this.camera.fov) * Math.min(1, dt * 4);
     this.camera.updateProjectionMatrix();
+
+    // high-speed additive streaks at the edge of the track make sprinting,
+    // turbo and multipliers feel faster without changing gameplay physics.
+    const streakIntensity = Math.max(
+      0,
+      Math.min(1, (p.speed - 34) / 34 + p.boost * 0.34 + Math.max(0, p.speedMult - 1) * 0.18),
+    );
+    this.speedLineMaterial.opacity = streakIntensity * 0.46;
+    const attrTmp = new THREE.Vector3();
+    for (const sLine of this.speedLines) {
+      sLine.line.visible = streakIntensity > 0.03;
+      if (!sLine.line.visible) continue;
+      const s0 = p.dist + 4 + ((this.time * 72 + sLine.phase) % 44);
+      const s1 = s0 - sLine.len;
+      const a = this.path.worldAt(s0, sLine.lane);
+      const b = this.path.worldAt(s1, sLine.lane * 0.96);
+      const pos = sLine.line.geometry.getAttribute("position") as THREE.BufferAttribute;
+      attrTmp.set(a.x, a.y + sLine.y, a.z);
+      pos.setXYZ(0, attrTmp.x, attrTmp.y, attrTmp.z);
+      attrTmp.set(b.x, b.y + sLine.y * 0.72, b.z);
+      pos.setXYZ(1, attrTmp.x, attrTmp.y, attrTmp.z);
+      pos.needsUpdate = true;
+    }
 
     // sun follows player so shadows always stay in a tight, high quality frustum
     const pw = this.path.worldAt(p.dist, p.lane);

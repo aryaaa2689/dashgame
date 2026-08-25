@@ -1,34 +1,95 @@
 import * as THREE from "three";
 import { TrackPath, Feature } from "@/lib/track";
 
-function checkerTexture(a: string, b: string) {
+function checkerTexture(_a: string, _b: string) {
+  // Modern gameplay surface: a dark high-contrast technical running deck
+  // with dashed center guides, subtle rubber/asphalt grain, and emissive
+  // edge strips. It replaces the old board-game grass checker look while
+  // still being generated locally (no asset downloads needed).
   const c = document.createElement("canvas");
-  c.width = c.height = 256;
+  c.width = 512;
+  c.height = 1024;
   const g = c.getContext("2d")!;
-  g.fillStyle = a;
-  g.fillRect(0, 0, 256, 256);
-  g.fillStyle = b;
-  g.fillRect(0, 0, 128, 128);
-  g.fillRect(128, 128, 128, 128);
-  // blade-like grass strokes for a more real turf look
-  for (let i = 0; i < 5000; i++) {
-    const x = Math.random() * 256;
-    const y = Math.random() * 256;
-    const shade = Math.random() * 0.16 - 0.08;
-    g.strokeStyle = `rgba(0,${shade > 0 ? 40 : 0},0,${Math.abs(shade)})`;
+
+  const base = g.createLinearGradient(0, 0, 512, 0);
+  base.addColorStop(0, "#111814");
+  base.addColorStop(0.5, "#263029");
+  base.addColorStop(1, "#111814");
+  g.fillStyle = base;
+  g.fillRect(0, 0, 512, 1024);
+
+  // fine asphalt/rubber grain
+  for (let i = 0; i < 18000; i++) {
+    const v = 18 + Math.random() * 45;
+    g.fillStyle = `rgba(${v},${v + 10},${v + 8},${0.025 + Math.random() * 0.045})`;
+    g.fillRect(Math.random() * 512, Math.random() * 1024, 1 + Math.random() * 2, 1);
+  }
+
+  // subtle woven traction grooves lengthwise
+  for (let x = 18; x < 512; x += 24) {
+    g.strokeStyle = "rgba(255,255,255,0.035)";
     g.lineWidth = 1;
     g.beginPath();
-    g.moveTo(x, y);
-    g.lineTo(x + (Math.random() - 0.5) * 3, y - 4 - Math.random() * 4);
+    g.moveTo(x, 0);
+    g.lineTo(x + 18, 1024);
     g.stroke();
   }
-  // soft vignette per tile edge for definition
-  g.strokeStyle = "rgba(0,0,0,0.08)";
-  g.lineWidth = 2;
-  g.strokeRect(1, 1, 254, 254);
+
+  // outer glow shoulders and crisp lane boundaries
+  const edgeGlow = g.createLinearGradient(0, 0, 512, 0);
+  edgeGlow.addColorStop(0, "rgba(64,255,180,0.42)");
+  edgeGlow.addColorStop(0.08, "rgba(64,255,180,0.08)");
+  edgeGlow.addColorStop(0.5, "rgba(64,255,180,0)");
+  edgeGlow.addColorStop(0.92, "rgba(64,255,180,0.08)");
+  edgeGlow.addColorStop(1, "rgba(64,255,180,0.42)");
+  g.fillStyle = edgeGlow;
+  g.fillRect(0, 0, 512, 1024);
+
+  for (const x of [42, 470]) {
+    g.shadowColor = "rgba(66,255,184,0.9)";
+    g.shadowBlur = 14;
+    g.strokeStyle = "rgba(136,255,210,0.95)";
+    g.lineWidth = 5;
+    g.beginPath();
+    g.moveTo(x, 0);
+    g.lineTo(x, 1024);
+    g.stroke();
+  }
+  g.shadowBlur = 0;
+
+  // dashed center and quarter lane guides
+  for (const [x, alpha, width] of [
+    [256, 0.72, 4],
+    [149, 0.28, 2],
+    [363, 0.28, 2],
+  ] as const) {
+    g.strokeStyle = `rgba(220,255,244,${alpha})`;
+    g.lineWidth = width;
+    g.setLineDash([42, 34]);
+    g.lineDashOffset = x === 256 ? 0 : 22;
+    g.beginPath();
+    g.moveTo(x, 0);
+    g.lineTo(x, 1024);
+    g.stroke();
+  }
+  g.setLineDash([]);
+
+  // rubber scuffs for speed and age
+  for (let i = 0; i < 90; i++) {
+    const x = 80 + Math.random() * 352;
+    const y = Math.random() * 1024;
+    g.strokeStyle = `rgba(0,0,0,${0.08 + Math.random() * 0.1})`;
+    g.lineWidth = 1 + Math.random() * 4;
+    g.beginPath();
+    g.ellipse(x, y, 5 + Math.random() * 22, 26 + Math.random() * 80, (Math.random() - 0.5) * 0.25, 0, Math.PI * 2);
+    g.stroke();
+  }
+
   const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 8;
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1, 0.12);
+  t.anisotropy = 12;
   return t;
 }
 
@@ -62,28 +123,70 @@ function symbolTexture(op: "+" | "-" | "x", value: number) {
   c.width = c.height = 256;
   const g = c.getContext("2d")!;
   const label = op === "x" ? `×${value}` : `${op}${value}`;
-  const colors =
-    op === "+" ? ["#fff6c2", "#ffce33"] : op === "-" ? ["#ffd0d0", "#ff3b4e"] : ["#fff0d0", "#ffb020"];
-  const grad = g.createRadialGradient(128, 100, 20, 128, 140, 150);
-  grad.addColorStop(0, colors[0]);
-  grad.addColorStop(1, colors[1]);
-  g.fillStyle = grad;
+  const palette =
+    op === "+"
+      ? { core: "#ffdf55", rim: "#6dffbc", shadow: "#1b3b20" }
+      : op === "-"
+        ? { core: "#ff5368", rim: "#ffb0b8", shadow: "#4d0010" }
+        : { core: "#ff9f2e", rim: "#ffe6a3", shadow: "#4b2500" };
+
+  g.clearRect(0, 0, 256, 256);
+  const glow = g.createRadialGradient(128, 128, 18, 128, 128, 128);
+  glow.addColorStop(0, palette.core);
+  glow.addColorStop(0.46, `${palette.core}88`);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = glow;
+  g.fillRect(0, 0, 256, 256);
+
+  const verts: [number, number][] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI / 2 + (i / 6) * Math.PI * 2;
+    verts.push([128 + Math.cos(a) * 96, 128 + Math.sin(a) * 96]);
+  }
   g.beginPath();
-  g.arc(128, 128, 118, 0, Math.PI * 2);
+  verts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+  g.closePath();
+  const face = g.createLinearGradient(58, 48, 198, 216);
+  face.addColorStop(0, "rgba(255,255,255,0.82)");
+  face.addColorStop(0.18, palette.rim);
+  face.addColorStop(0.55, palette.core);
+  face.addColorStop(1, "rgba(20,28,24,0.9)");
+  g.fillStyle = face;
   g.fill();
-  g.lineWidth = 10;
-  g.strokeStyle = "rgba(255,255,255,0.9)";
+  g.lineWidth = 9;
+  g.shadowColor = palette.core;
+  g.shadowBlur = 22;
+  g.strokeStyle = "rgba(255,255,255,0.88)";
   g.stroke();
-  g.font = "900 118px Arial Black, Arial, sans-serif";
+  g.shadowBlur = 0;
+
+  // inner glass reflection and circuit detail
+  g.globalAlpha = 0.45;
+  g.fillStyle = "#ffffff";
+  g.beginPath();
+  g.ellipse(108, 82, 54, 20, -0.35, 0, Math.PI * 2);
+  g.fill();
+  g.globalAlpha = 1;
+  g.strokeStyle = "rgba(255,255,255,0.22)";
+  g.lineWidth = 2;
+  for (const y of [72, 184]) {
+    g.beginPath();
+    g.moveTo(62, y);
+    g.lineTo(194, y);
+    g.stroke();
+  }
+
+  g.font = "900 108px Arial Black, Arial, sans-serif";
   g.textAlign = "center";
   g.textBaseline = "middle";
   g.lineWidth = 14;
-  g.strokeStyle = op === "-" ? "#6b0010" : "#6a4200";
-  g.strokeText(label, 128, 138);
+  g.strokeStyle = palette.shadow;
+  g.strokeText(label, 128, 139);
   g.fillStyle = "#ffffff";
-  g.fillText(label, 128, 138);
+  g.fillText(label, 128, 139);
+
   const t = new THREE.CanvasTexture(c);
-  t.anisotropy = 4;
+  t.anisotropy = 8;
   return t;
 }
 
@@ -121,7 +224,7 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
     positions.push(p.x - sx * halfW, p.y, p.z - sz * halfW);
     positions.push(p.x + sx * halfW, p.y, p.z + sz * halfW);
     const v = (i * path.step) / 7;
-    uvs.push(0, v, 4, v);
+    uvs.push(0, v, 1, v);
     normalsHint.push(0, 1, 0, 0, 1, 0);
     if (i < pts.length - 1) {
       const a = i * 2;
@@ -136,7 +239,12 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
   const tex = checkerTexture(def.grass[0], def.grass[1]);
   const road = new THREE.Mesh(
     geo,
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92, metalness: 0.0 }),
+    new THREE.MeshStandardMaterial({
+      map: tex,
+      roughness: 0.72,
+      metalness: 0.08,
+      color: 0xf4fff8,
+    }),
   );
   road.receiveShadow = true;
   group.add(road);
@@ -152,7 +260,12 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
   // ---- side barriers (tube) with bark texture + rounded caps
   const barkTex = barkTexture(def.wall);
   barkTex.repeat.set(1, 40);
-  const wallMat = new THREE.MeshStandardMaterial({ map: barkTex, roughness: 0.85, metalness: 0.03 });
+  const wallMat = new THREE.MeshStandardMaterial({
+    map: barkTex,
+    color: 0x5a5149,
+    roughness: 0.48,
+    metalness: 0.38,
+  });
   for (const sign of [-1, 1]) {
     const cps: THREE.Vector3[] = [];
     for (let i = 0; i < pts.length; i += 2) {
@@ -169,12 +282,25 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
     tube.castShadow = true;
     tube.receiveShadow = true;
     group.add(tube);
-    // mossy top highlight strip
-    const mossMat = new THREE.MeshStandardMaterial({ color: 0x4e9e4a, roughness: 1 });
-    const mossTube = new THREE.Mesh(new THREE.TubeGeometry(curve, cps.length * 2, 1.2, 12, false), mossMat);
-    mossTube.scale.set(1, 0.14, 1);
-    mossTube.position.y = 0.55;
-    group.add(mossTube);
+    // holographic safety rail sitting over the physical barrier
+    const railMat = new THREE.MeshStandardMaterial({
+      color: 0x8effd0,
+      emissive: 0x38ffad,
+      emissiveIntensity: 1.45,
+      roughness: 0.22,
+      metalness: 0.25,
+    });
+    const rail = new THREE.Mesh(new THREE.TubeGeometry(curve, cps.length * 2, 0.16, 8, false), railMat);
+    rail.position.y = 1.38;
+    rail.castShadow = false;
+    group.add(rail);
+
+    const lowerRail = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, cps.length * 2, 0.08, 8, false),
+      new THREE.MeshStandardMaterial({ color: 0xd7fff1, emissive: 0x2ddf98, emissiveIntensity: 0.75 }),
+    );
+    lowerRail.position.y = -0.15;
+    group.add(lowerRail);
   }
 
   // ---- jungle scenery
@@ -262,8 +388,20 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
 
   // ---- feature props: arithmetic pickup badges, ramps and bumps
   const featureMeshes: THREE.Object3D[] = [];
-  const rampMat = new THREE.MeshStandardMaterial({ color: 0xff9f43, roughness: 0.5, metalness: 0.1 });
-  const bumpMat = new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.85 });
+  const rampMat = new THREE.MeshStandardMaterial({
+    color: 0x303744,
+    roughness: 0.34,
+    metalness: 0.72,
+    emissive: 0x1b2b32,
+    emissiveIntensity: 0.35,
+  });
+  const bumpMat = new THREE.MeshStandardMaterial({
+    color: 0xff4960,
+    roughness: 0.42,
+    metalness: 0.22,
+    emissive: 0x3d0010,
+    emissiveIntensity: 0.5,
+  });
 
   for (const f of path.features) {
     const w = path.worldAt(f.s, f.lane);
@@ -285,6 +423,14 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
       coin.position.y = 1.15;
       coin.castShadow = true;
       g.add(coin);
+      const haloColor = f.op === "-" ? 0xff5368 : f.op === "x" ? 0xffb13b : 0x66ffc0;
+      const halo = new THREE.Mesh(
+        new THREE.TorusGeometry(1.42, 0.045, 8, 42),
+        new THREE.MeshBasicMaterial({ color: haloColor, transparent: true, opacity: 0.72 }),
+      );
+      halo.rotation.x = Math.PI / 2;
+      halo.position.y = 1.15;
+      g.add(halo);
       // soft glow disc behind
       const glow = new THREE.Sprite(
         new THREE.SpriteMaterial({
@@ -308,11 +454,27 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
       wedge.castShadow = true;
       const holder = new THREE.Group();
       holder.add(wedge);
+      const stripMat = new THREE.MeshBasicMaterial({ color: 0x7fe7ff });
+      for (const x of [-1.15, 1.15]) {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 2.8), stripMat);
+        strip.position.set(x, 0.18, 0);
+        holder.add(strip);
+      }
       obj = holder;
     } else {
-      obj = new THREE.Mesh(new THREE.SphereGeometry(1.2, 14, 10), bumpMat);
-      obj.scale.y = 0.42;
-      obj.castShadow = true;
+      const hazard = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.26, 1.0), bumpMat);
+      base.position.y = 0.18;
+      base.castShadow = true;
+      hazard.add(base);
+      const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffd65a });
+      for (const x of [-0.72, 0, 0.72]) {
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.62, 4), stripeMat);
+        spike.position.set(x, 0.62, 0);
+        spike.rotation.y = Math.PI / 4;
+        hazard.add(spike);
+      }
+      obj = hazard;
     }
     const wrap = new THREE.Group();
     wrap.position.set(w.x, w.y + 0.05, w.z);
