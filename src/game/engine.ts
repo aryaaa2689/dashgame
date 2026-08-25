@@ -202,8 +202,8 @@ export class RaceEngine {
     this.renderer.toneMappingExposure = 1.08;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    this.camera = new THREE.PerspectiveCamera(62, canvas.clientWidth / canvas.clientHeight, 0.35, 700);
-    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 60, 280);
+    this.camera = new THREE.PerspectiveCamera(62, canvas.clientWidth / canvas.clientHeight, 0.35, 900);
+    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 110, 420);
     this.scene.background = new THREE.Color(def.fog);
 
     this.speedLineMaterial = new THREE.LineBasicMaterial({
@@ -214,8 +214,8 @@ export class RaceEngine {
       blending: THREE.AdditiveBlending,
     });
 
-    this.scene.add(new THREE.HemisphereLight(0xe8f4ff, 0x2a3a22, 1.05));
-    const sun = new THREE.DirectionalLight(def.id === "sunset-lagoon" ? 0xffd2a8 : 0xfff3dc, 1.85);
+    this.scene.add(new THREE.HemisphereLight(0xe7f1ff, 0x3a4a32, 0.95));
+    const sun = new THREE.DirectionalLight(def.id === "sunset-lagoon" ? 0xffd2a8 : 0xfff1d6, 2.05);
     sun.position.set(40, 70, 28);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
