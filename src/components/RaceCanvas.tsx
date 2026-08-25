@@ -1,82 +1,142 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RaceEngine, RacerConfig, HudState, RaceResult } from "@/game/engine";
 import { audio } from "@/game/audio";
+import { buildPath, getTrack } from "@/lib/track";
 
 const ORD = ["1", "2", "3", "4", "5", "6", "7", "8"];
 const SUF = ["ST", "ND", "RD", "TH", "TH", "TH", "TH", "TH"];
 
-function Tachometer({ speed, boost }: { speed: number; boost: number }) {
-  const maxSpeed = 120;
+function formatTime(t: number) {
+  const m = Math.floor(t / 60);
+  const s = t - m * 60;
+  return `${m}:${s.toFixed(2).padStart(5, "0")}`;
+}
+
+function Tachometer({ speed, boost, nitro }: { speed: number; boost: number; nitro: boolean }) {
+  const maxSpeed = 220;
   const pct = Math.max(0, Math.min(1, speed / maxSpeed));
-  const R = 44;
+  const R = 46;
   const C = 2 * Math.PI * R;
-  const SWEEP = 0.72; // 260 deg arc
+  const SWEEP = 0.75;
   const arc = C * SWEEP;
 
   return (
-    <div className="relative h-28 w-28 drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
-      <svg viewBox="0 0 110 110" className="h-full w-full">
-        <g transform="rotate(140 55 55)">
-          {/* Outer Housing */}
-          <circle cx="55" cy="55" r="51" fill="rgba(8,14,18,0.78)" />
-          <circle cx="55" cy="55" r="51" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
-
-          {/* Background Arc */}
+    <div className="relative h-[7.4rem] w-[7.4rem]">
+      <svg viewBox="0 0 114 114" className="h-full w-full drop-shadow-[0_8px_18px_rgba(0,0,0,0.55)]">
+        <g transform="rotate(135 57 57)">
+          <circle cx="57" cy="57" r="54" fill="rgba(6,10,16,0.78)" />
+          <circle cx="57" cy="57" r="54" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.4" />
           <circle
-            cx="55"
-            cy="55"
+            cx="57"
+            cy="57"
             r={R}
             fill="none"
             stroke="rgba(255,255,255,0.1)"
-            strokeWidth="7"
-            strokeLinecap="butt"
+            strokeWidth="8"
             strokeDasharray={`${arc} ${C}`}
           />
-
-          {/* Speed Value Arc */}
           <circle
-            cx="55"
-            cy="55"
+            cx="57"
+            cy="57"
             r={R}
             fill="none"
-            stroke={pct > 0.8 ? "#ff2a5f" : "#00f0ff"}
-            strokeWidth="7"
-            strokeLinecap="butt"
+            stroke={pct > 0.82 ? "#ff3b6b" : nitro ? "#ffe27a" : "#6cf3ff"}
+            strokeWidth="8"
             strokeDasharray={`${arc * pct} ${C}`}
-            style={{ transition: "stroke-dasharray 80ms linear" }}
+            style={{ transition: "stroke-dasharray 70ms linear" }}
           />
-
-          {/* Inner Nitro Ring */}
           <circle
-            cx="55"
-            cy="55"
-            r={R - 9}
+            cx="57"
+            cy="57"
+            r={R - 11}
             fill="none"
             stroke="rgba(255,255,255,0.08)"
-            strokeWidth="3"
-            strokeDasharray={`${2 * Math.PI * (R - 9) * SWEEP} ${2 * Math.PI * (R - 9)}`}
+            strokeWidth="3.2"
+            strokeDasharray={`${2 * Math.PI * (R - 11) * SWEEP} ${2 * Math.PI * (R - 11)}`}
           />
           <circle
-            cx="55"
-            cy="55"
-            r={R - 9}
+            cx="57"
+            cy="57"
+            r={R - 11}
             fill="none"
-            stroke="#ffd700"
-            strokeWidth="3"
-            strokeDasharray={`${2 * Math.PI * (R - 9) * SWEEP * boost} ${2 * Math.PI * (R - 9)}`}
+            stroke="#ffd24a"
+            strokeWidth="3.2"
+            strokeDasharray={`${2 * Math.PI * (R - 11) * SWEEP * boost} ${2 * Math.PI * (R - 11)}`}
           />
         </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pb-1">
-        <span className="tabnum font-mono text-2xl font-black leading-none text-white tracking-tight">
+        <span className="tabnum font-mono text-[1.65rem] font-black leading-none tracking-tight text-white">
           {Math.round(speed)}
         </span>
-        <span className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.25em] text-cyan-400/80">
-          KM/H
-        </span>
+        <span className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.28em] text-cyan-300/75">km/h</span>
       </div>
+    </div>
+  );
+}
+
+function MiniMap({
+  trackId,
+  racers,
+}: {
+  trackId: string;
+  racers: HudState["racers"] | undefined;
+}) {
+  const pts = useMemo(() => {
+    const path = buildPath(getTrack(trackId));
+    let minX = Infinity,
+      maxX = -Infinity,
+      minZ = Infinity,
+      maxZ = -Infinity;
+    const raw = path.points.filter((_, i) => i % 3 === 0);
+    for (const p of raw) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minZ = Math.min(minZ, p.z);
+      maxZ = Math.max(maxZ, p.z);
+    }
+    const pad = 12;
+    const sx = 108 / Math.max(1, maxX - minX + pad * 2);
+    const sz = 78 / Math.max(1, maxZ - minZ + pad * 2);
+    const s = Math.min(sx, sz);
+    const d = raw
+      .map((p, i) => {
+        const x = 8 + (p.x - minX + pad) * s;
+        const y = 8 + (p.z - minZ + pad) * s;
+        return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      })
+      .join(" ");
+    return { d, minX, minZ, pad, s, points: path.points };
+  }, [trackId]);
+
+  return (
+    <div className="pointer-events-none hidden overflow-hidden rounded-xl border border-white/15 bg-black/45 p-1.5 backdrop-blur-md sm:block">
+      <svg viewBox="0 0 124 94" className="h-[5.6rem] w-[7.6rem]">
+        <path d={pts.d} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="6" strokeLinecap="round" />
+        <path d={pts.d} fill="none" stroke="#6cf3ff" strokeWidth="2.1" strokeLinecap="round" />
+        {racers?.map((r) => {
+          const idx = Math.min(
+            pts.points.length - 1,
+            Math.max(0, Math.round(r.progress * (pts.points.length - 1))),
+          );
+          const p = pts.points[idx];
+          const x = 8 + (p.x - pts.minX + pts.pad) * pts.s;
+          const y = 8 + (p.z - pts.minZ + pts.pad) * pts.s;
+          return (
+            <circle
+              key={r.id}
+              cx={x}
+              cy={y}
+              r={r.isPlayer ? 3.4 : 2.2}
+              fill={r.isPlayer ? "#fff" : r.color}
+              stroke={r.isPlayer ? "#6cf3ff" : "rgba(0,0,0,0.45)"}
+              strokeWidth={r.isPlayer ? 1.4 : 0.6}
+            />
+          );
+        })}
+      </svg>
     </div>
   );
 }
@@ -159,116 +219,126 @@ export default function RaceCanvas({
   const place = hud?.place ?? 1;
   const boost = hud?.boostCharge ?? 0;
   const ready = boost >= 0.95;
+  const nitro = !!hud?.nitroActive;
 
   return (
-    <div className="fixed inset-0 select-none overflow-hidden bg-slate-950 font-display touch-none">
+    <div className="fixed inset-0 select-none overflow-hidden bg-[#05080d] font-display touch-none">
       <canvas ref={canvasRef} className="h-full w-full touch-none" />
 
-      {/* Cinematic Vignette */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.05) 0%, transparent 60%, rgba(0,0,0,0.45) 100%)",
+            "radial-gradient(ellipse at 50% 42%, transparent 40%, rgba(0,0,0,0.38) 100%)",
         }}
       />
+      {nitro && (
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,230,255,0.08),transparent_60%)]" />
+      )}
 
-      {/* Pause Button */}
-      <button
-        onClick={togglePause}
-        className="pointer-events-auto absolute left-3 top-3 z-20 rounded-full border border-white/20 bg-black/50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-white/90 backdrop-blur-md transition hover:bg-black/70 hover:text-cyan-300 touch-manipulation sm:left-5 sm:top-4"
-      >
-        ❚❚ Pause
-      </button>
-
-      {/* Race Position Overlay (Top Center Arcade Badge) */}
-      <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center sm:top-5">
-        <div
-          className="relative -rotate-2 text-[4.5rem] font-black italic leading-none tracking-[-0.08em] sm:text-[5.6rem]"
-          style={{
-            color: "#ffd700",
-            WebkitTextStroke: "5px #0a0d14",
-            textShadow: "0 6px 0 #b35900, 0 12px 22px rgba(0,0,0,.6), 0 0 20px rgba(255,215,0,.4)",
-          }}
-        >
-          <span
-            className="absolute inset-0 bg-gradient-to-b from-white via-[#ffe600] to-[#ff6600] bg-clip-text text-transparent"
-            style={{ WebkitTextStroke: "0 transparent" }}
+      {/* Top chrome */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 pt-3 sm:px-5 sm:pt-4">
+        <div className="flex items-start gap-2">
+          <button
+            onClick={togglePause}
+            className="pointer-events-auto rounded-full border border-white/18 bg-black/50 px-3.5 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white/90 backdrop-blur-md transition hover:border-cyan-300/50 hover:text-cyan-200 touch-manipulation"
           >
-            {ORD[place - 1] ?? "1"}
-            <span className="text-[0.45em] tracking-[-0.12em]">{(SUF[place - 1] ?? "TH").toLowerCase()}</span>
-          </span>
-          <span aria-hidden="true">
-            {ORD[place - 1] ?? "1"}
-            <span className="text-[0.45em] tracking-[-0.12em]">{(SUF[place - 1] ?? "TH").toLowerCase()}</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Top Right Tachometer & Speed Display */}
-      <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-col items-end sm:right-5 sm:top-4">
-        <Tachometer speed={hud?.speed ?? 0} boost={boost} />
-
-        {/* Nitro Charge Bar */}
-        <div className="mt-1 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 backdrop-blur-md border border-white/10">
-          <span className="text-[9px] font-bold uppercase tracking-widest text-yellow-400">
-            {ready ? "NITRO READY!" : "NITRO"}
-          </span>
-          <div className="h-2 w-20 overflow-hidden rounded-full bg-white/10">
-            <div
-              className={`h-full rounded-full transition-all duration-100 ${
-                ready
-                  ? "bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 shadow-[0_0_12px_#ffd700]"
-                  : "bg-cyan-400"
-              }`}
-              style={{ width: `${Math.round(boost * 100)}%` }}
-            />
+            Pause
+          </button>
+          <div className="hidden rounded-full border border-white/12 bg-black/40 px-3 py-1.5 backdrop-blur-md sm:block">
+            <div className="text-[9px] font-bold uppercase tracking-[0.28em] text-white/40">Circuit</div>
+            <div className="text-[11px] font-black uppercase tracking-wide text-white/85">{hud?.trackName}</div>
           </div>
         </div>
+
+        <div className="flex flex-col items-center">
+          <div
+            className="-rotate-2 text-[4.2rem] font-black italic leading-none tracking-[-0.08em] sm:text-[5.4rem]"
+            style={{
+              color: "#ffd24a",
+              WebkitTextStroke: "5px #0a0d14",
+              textShadow: "0 6px 0 #9a4d00, 0 12px 22px rgba(0,0,0,.55)",
+            }}
+          >
+            <span
+              className="absolute inset-0 bg-gradient-to-b from-white via-[#ffe600] to-[#ff7a1a] bg-clip-text text-transparent"
+              style={{ WebkitTextStroke: "0 transparent" }}
+            >
+              {ORD[place - 1] ?? "1"}
+              <span className="text-[0.42em] tracking-[-0.1em]">{(SUF[place - 1] ?? "TH").toLowerCase()}</span>
+            </span>
+            <span aria-hidden="true">
+              {ORD[place - 1] ?? "1"}
+              <span className="text-[0.42em] tracking-[-0.1em]">{(SUF[place - 1] ?? "TH").toLowerCase()}</span>
+            </span>
+          </div>
+          <div className="mt-1 rounded-full border border-white/12 bg-black/45 px-3 py-0.5 font-mono text-[11px] text-white/70 backdrop-blur-md">
+            {hud?.gapAhead && hud.gapAhead > 0.04 ? (
+              <span>
+                <span className="text-white/40">GAP </span>
+                <span className="text-cyan-300">+{hud.gapAhead.toFixed(2)}s</span>
+              </span>
+            ) : (
+              <span className="text-amber-300">P1 · LEADING</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <Tachometer speed={hud?.speed ?? 0} boost={boost} nitro={nitro} />
+          <div className="flex items-center gap-2 rounded-full border border-white/12 bg-black/50 px-2.5 py-1 backdrop-blur-md">
+            <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${ready ? "text-amber-300" : "text-white/45"}`}>
+              {ready ? "NITRO READY" : "NITRO"}
+            </span>
+            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
+              <div
+                className={`h-full rounded-full ${
+                  ready ? "bg-gradient-to-r from-amber-300 to-orange-500" : "bg-cyan-400"
+                }`}
+                style={{ width: `${Math.round(boost * 100)}%` }}
+              />
+            </div>
+          </div>
+          <div className="hidden rounded-lg border border-white/12 bg-black/45 px-2.5 py-1.5 text-right backdrop-blur-md sm:block">
+            <div className="tabnum font-mono text-sm font-bold text-white">{formatTime(hud?.time ?? 0)}</div>
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/40">
+              {hud?.score ?? 0} pts
+            </div>
+          </div>
+          <MiniMap trackId={trackId} racers={hud?.racers} />
+        </div>
       </div>
 
-      {/* Left Leaderboard Ladder */}
+      {/* Ladder */}
       <div className="pointer-events-none absolute left-3 top-1/2 z-10 hidden -translate-y-1/2 flex-col gap-1 sm:flex sm:left-5">
-        <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.3em] text-white/40">
-          Grid Position
-        </div>
+        <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.3em] text-white/35">Live order</div>
         {hud?.racers.slice(0, 8).map((r, i) => (
           <div
             key={r.id}
-            className={`flex items-center gap-2 border-l-2 py-1 pl-2 pr-3 backdrop-blur-md transition-colors ${
-              r.isPlayer ? "bg-white/15 border-cyan-400" : "bg-black/40 border-white/20"
+            className={`flex items-center gap-2 border-l-2 py-1 pl-2 pr-3 backdrop-blur-md ${
+              r.isPlayer ? "bg-cyan-400/15" : "bg-black/40"
             }`}
-            style={{ borderColor: r.isPlayer ? "#00f0ff" : r.color }}
+            style={{ borderColor: r.isPlayer ? "#6cf3ff" : r.color }}
           >
-            <span className="tabnum w-3 font-mono text-[11px] font-bold text-white/50">{i + 1}</span>
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ background: r.color, boxShadow: `0 0 8px ${r.color}` }}
-            />
-            <span
-              className={`w-20 truncate text-[11px] font-black uppercase tracking-wider ${
-                r.isPlayer ? "text-cyan-300" : "text-white/70"
-              }`}
-            >
+            <span className="tabnum w-3 font-mono text-[11px] font-bold text-white/45">{i + 1}</span>
+            <span className="h-2 w-2 rounded-full" style={{ background: r.color, boxShadow: `0 0 8px ${r.color}` }} />
+            <span className={`w-[4.6rem] truncate text-[11px] font-black uppercase tracking-wider ${r.isPlayer ? "text-cyan-200" : "text-white/70"}`}>
               {r.name}
-            </span>
-            <span className="tabnum font-mono text-[10px] text-white/40">
-              {(r.progress * 100).toFixed(0)}%
             </span>
           </div>
         ))}
       </div>
 
-      {/* Circuit Progress Bar (Bottom Telemetry) */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-1 sm:bottom-3 z-10 px-4 sm:px-8">
+      {/* Progress */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-1 z-10 px-4 sm:bottom-3 sm:px-8">
         <div className="mx-auto max-w-xl">
-          <div className="mb-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/50">
-            <span>Track Progress</span>
-            <span className="font-mono text-cyan-400">{((hud?.progress ?? 0) * 100).toFixed(0)}%</span>
+          <div className="mb-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/45">
+            <span>Lap progress</span>
+            <span className="font-mono text-cyan-300">{((hud?.progress ?? 0) * 100).toFixed(0)}%</span>
           </div>
-          <div className="relative h-2.5 overflow-hidden rounded-full bg-black/60 border border-white/15 backdrop-blur-md">
+          <div className="relative h-2.5 overflow-hidden rounded-full border border-white/15 bg-black/55 backdrop-blur-md">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-emerald-400 to-yellow-300 transition-all duration-75 shadow-[0_0_10px_rgba(0,240,255,0.6)]"
+              className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-300"
               style={{ width: `${((hud?.progress ?? 0) * 100).toFixed(1)}%` }}
             />
             {hud?.racers
@@ -276,7 +346,7 @@ export default function RaceCanvas({
               .map((r) => (
                 <div
                   key={r.id}
-                  className="absolute top-0 h-full w-1 rounded-full opacity-80"
+                  className="absolute top-0 h-full w-1 rounded-full opacity-85"
                   style={{ left: `${(r.progress * 100).toFixed(1)}%`, background: r.color }}
                 />
               ))}
@@ -284,16 +354,14 @@ export default function RaceCanvas({
         </div>
       </div>
 
-      {/* On-Screen Mobile Touch Controls */}
       {touchUi ? (
         <div className="absolute inset-x-0 bottom-8 z-20 flex items-end justify-between px-4 pb-2">
-          {/* Steering Pad (Left/Right) */}
           <div className="flex gap-3">
             <button
               onPointerDown={() => eng()?.touch(-1)}
               onPointerUp={() => eng()?.touch(0)}
               onPointerLeave={() => eng()?.touch(0)}
-              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/50 text-2xl text-white/80 backdrop-blur-md active:scale-95 active:border-cyan-400 active:bg-cyan-500/20 active:text-white touch-manipulation"
+              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/50 text-2xl text-white/80 backdrop-blur-md active:scale-95 active:border-cyan-400 touch-manipulation"
             >
               ◀
             </button>
@@ -301,107 +369,89 @@ export default function RaceCanvas({
               onPointerDown={() => eng()?.touch(1)}
               onPointerUp={() => eng()?.touch(0)}
               onPointerLeave={() => eng()?.touch(0)}
-              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/50 text-2xl text-white/80 backdrop-blur-md active:scale-95 active:border-cyan-400 active:bg-cyan-500/20 active:text-white touch-manipulation"
+              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/50 text-2xl text-white/80 backdrop-blur-md active:scale-95 active:border-cyan-400 touch-manipulation"
             >
               ▶
             </button>
           </div>
-
-          {/* Action Buttons (Nitro & Jump) */}
           <div className="flex items-center gap-3">
             <button
               onPointerDown={() => eng()?.doBoost()}
-              className={`relative flex h-16 w-16 flex-col items-center justify-center rounded-2xl border backdrop-blur-md transition active:scale-95 touch-manipulation ${
+              className={`relative flex h-16 w-16 flex-col items-center justify-center rounded-2xl border backdrop-blur-md active:scale-95 touch-manipulation ${
                 ready
-                  ? "border-yellow-400 bg-yellow-500/25 text-yellow-300 shadow-[0_0_24px_rgba(255,215,0,0.5)] animate-pulse"
+                  ? "border-yellow-400 bg-yellow-500/25 text-yellow-300 shadow-[0_0_24px_rgba(255,215,0,0.45)]"
                   : "border-white/15 bg-black/50 text-white/40"
               }`}
             >
               <span className="text-xl">⚡</span>
-              <span className="text-[9px] font-black uppercase tracking-widest">NITRO</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Nitro</span>
             </button>
-
             <button
               onPointerDown={() => eng()?.doJump()}
-              className="flex h-16 w-16 flex-col items-center justify-center rounded-2xl border border-emerald-400/40 bg-emerald-500/20 text-emerald-300 backdrop-blur-md active:scale-95 active:bg-emerald-400/40 touch-manipulation"
+              className="flex h-16 w-16 flex-col items-center justify-center rounded-2xl border border-emerald-400/40 bg-emerald-500/20 text-emerald-300 backdrop-blur-md active:scale-95 touch-manipulation"
             >
               <span className="text-xl">▲</span>
-              <span className="text-[9px] font-black uppercase tracking-widest">JUMP</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Jump</span>
             </button>
           </div>
         </div>
       ) : (
-        /* Desktop Keyboard Hint Legend */
-        <div className="pointer-events-none absolute bottom-12 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-3 sm:flex">
-          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/50 px-3 py-1.5 backdrop-blur-md">
-            <kbd className="font-mono text-xs font-bold text-cyan-400">A / D</kbd>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Steer</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/50 px-3 py-1.5 backdrop-blur-md">
-            <kbd className="font-mono text-xs font-bold text-cyan-400">SPACE</kbd>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Jump</span>
-          </div>
+        <div className="pointer-events-none absolute bottom-12 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-2 sm:flex">
+          {[
+            ["A / D", "Steer"],
+            ["SPACE", "Jump"],
+          ].map(([k, l]) => (
+            <div key={k} className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/50 px-3 py-1.5 backdrop-blur-md">
+              <kbd className="font-mono text-xs font-bold text-cyan-300">{k}</kbd>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">{l}</span>
+            </div>
+          ))}
           <div
             className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 backdrop-blur-md ${
               ready ? "border-yellow-400 bg-yellow-500/20 text-yellow-300" : "border-white/10 bg-black/50 text-white/50"
             }`}
           >
             <kbd className="font-mono text-xs font-bold">SHIFT</kbd>
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-              {ready ? "NITRO READY" : "Nitro"}
-            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">{ready ? "Nitro ready" : "Nitro"}</span>
           </div>
         </div>
       )}
 
-      {/* 3-2-1 Countdown Overlay */}
       {cd !== null && cd > 0 && (
-        <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="mb-2 text-xs font-bold uppercase tracking-[0.6em] text-cyan-400">
-            GET READY
-          </div>
-          <div className="relative flex h-36 w-36 items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-2 border-cyan-400/40" />
-            <div className="absolute inset-0 animate-ping rounded-full border-2 border-yellow-400/60" />
-            <span
-              key={cd}
-              className="tabnum font-mono text-[6.5rem] font-black leading-none text-white drop-shadow-[0_0_40px_rgba(0,240,255,0.8)]"
-            >
+        <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/35 backdrop-blur-[2px]">
+          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.62em] text-cyan-300">Lights out</div>
+          <div className="relative flex h-40 w-40 items-center justify-center">
+            <div className="absolute inset-0 rounded-full border border-cyan-300/35" />
+            <div className="absolute inset-0 animate-ping rounded-full border border-amber-300/40" />
+            <span key={cd} className="tabnum font-mono text-[7rem] font-black leading-none text-white drop-shadow-[0_0_40px_rgba(0,240,255,0.75)]">
               {cd}
             </span>
           </div>
         </div>
       )}
 
-      {/* GO Splash Overlay */}
       {cd === 0 && go && (
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
           <div
             className="animate-[go_.85s_ease-out_forwards] text-8xl font-black italic uppercase tracking-tight text-emerald-400"
-            style={{ textShadow: "0 0 60px rgba(0,255,136,.9)" }}
+            style={{ textShadow: "0 0 60px rgba(0,255,136,.85)" }}
           >
             GO!
           </div>
         </div>
       )}
 
-      {/* Pause Menu Overlay */}
       {paused && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/75 backdrop-blur-md">
-          <div className="w-full max-w-sm border border-cyan-400/40 bg-slate-900/90 p-6 text-center rounded-2xl shadow-[0_0_50px_rgba(0,240,255,0.25)] animate-[fadeUp_.25s_ease-out]">
-            <h2 className="mb-1 text-2xl font-black uppercase tracking-widest text-cyan-400">
-              GAME PAUSED
-            </h2>
-            <p className="mb-6 font-mono text-xs uppercase tracking-wider text-white/50">
-              Race on pause
-            </p>
-
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/72 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-2xl border border-cyan-400/35 bg-[#0a121c]/92 p-6 text-center shadow-[0_0_50px_rgba(0,240,255,0.18)]">
+            <h2 className="mb-1 text-2xl font-black uppercase tracking-[0.22em] text-cyan-300">Paused</h2>
+            <p className="mb-6 font-mono text-[11px] uppercase tracking-[0.22em] text-white/45">Race held</p>
             <div className="flex flex-col gap-3">
               <button
                 onClick={togglePause}
-                className="w-full rounded-xl border border-cyan-400/60 bg-cyan-500/20 py-3 text-sm font-black uppercase tracking-wider text-cyan-300 transition hover:bg-cyan-500/30 touch-manipulation"
+                className="w-full rounded-xl border border-cyan-400/55 bg-cyan-500/20 py-3 text-sm font-black uppercase tracking-wider text-cyan-200 hover:bg-cyan-500/30"
               >
-                Resume Race
+                Resume
               </button>
               <button
                 onClick={() => {
@@ -410,23 +460,20 @@ export default function RaceCanvas({
                   } catch {}
                   onExit();
                 }}
-                className="w-full rounded-xl border border-white/20 bg-white/5 py-3 text-sm font-black uppercase tracking-wider text-white/70 transition hover:bg-white/10 hover:text-white touch-manipulation"
+                className="w-full rounded-xl border border-white/15 bg-white/5 py-3 text-sm font-black uppercase tracking-wider text-white/70 hover:bg-white/10"
               >
-                Exit to Main Menu
+                Exit to menu
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Race Finish Banner */}
       {hud?.finished && (
         <div className="pointer-events-none absolute inset-x-0 top-1/2 z-30 flex -translate-y-1/2 justify-center">
-          <div className="animate-[fadeUp_.4s_ease-out] rounded-2xl border border-cyan-400/40 bg-black/80 px-10 py-6 text-center backdrop-blur-xl shadow-[0_0_50px_rgba(0,240,255,0.3)]">
-            <div className="text-xs font-bold uppercase tracking-[0.5em] text-white/50">
-              RACE FINISHED
-            </div>
-            <div className="mt-1 text-4xl font-black uppercase tracking-tight text-cyan-300">
+          <div className="animate-[fadeUp_.4s_ease-out] rounded-2xl border border-cyan-400/35 bg-black/78 px-10 py-6 text-center backdrop-blur-xl shadow-[0_0_50px_rgba(0,240,255,0.22)]">
+            <div className="text-[11px] font-bold uppercase tracking-[0.5em] text-white/45">Chequered flag</div>
+            <div className="mt-1 text-4xl font-black uppercase tracking-tight text-cyan-200">
               P{place} · {(hud.time ?? 0).toFixed(2)}s
             </div>
           </div>

@@ -27,13 +27,13 @@ export default function CharacterPreview({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     const scene = new THREE.Scene();
-    const cam = new THREE.PerspectiveCamera(34, canvas.clientWidth / canvas.clientHeight, 0.1, 60);
-    cam.position.set(2.8, 2.2, 5.2);
-    cam.lookAt(0, 0.5, 0);
+    const cam = new THREE.PerspectiveCamera(32, canvas.clientWidth / canvas.clientHeight, 0.1, 60);
+    cam.position.set(3.15, 1.85, 5.4);
+    cam.lookAt(0, 0.55, 0);
 
-    scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x16301f, 0.7));
-    const key = new THREE.DirectionalLight(0xfff2d8, 2.6);
-    key.position.set(3.2, 5, 4);
+    scene.add(new THREE.HemisphereLight(0xd7ecff, 0x1a2418, 0.85));
+    const key = new THREE.DirectionalLight(0xfff1d6, 2.8);
+    key.position.set(3.4, 5.2, 3.6);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
     key.shadow.camera.near = 0.5;

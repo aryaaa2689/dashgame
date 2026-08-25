@@ -66,7 +66,7 @@ export function MenuRow({
         safeAudio(() => audio.uiClick());
         onClick?.();
       }}
-      className="group relative w-full overflow-hidden border text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 clip-plate touch-manipulation min-h-[52px]"
+      className="group relative w-full overflow-hidden border text-left transition-all duration-200 hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-40 clip-plate touch-manipulation min-h-[54px]"
       style={{ borderColor: a.border, background: a.bg, boxShadow: a.glow }}
     >
       <span

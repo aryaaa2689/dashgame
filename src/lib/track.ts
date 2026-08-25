@@ -144,6 +144,8 @@ export type Sample = {
   z: number;
   yaw: number;
   pitch: number;
+  roll: number;
+  curve: number;
 };
 
 export type TrackPath = {
@@ -154,7 +156,10 @@ export type TrackPath = {
   features: Feature[];
   sample(s: number): Sample;
   sideVector(yaw: number): { x: number; z: number };
-  worldAt(s: number, lane: number): { x: number; y: number; z: number; yaw: number };
+  worldAt(
+    s: number,
+    lane: number,
+  ): { x: number; y: number; z: number; yaw: number; pitch: number; roll: number };
 };
 
 const cache = new Map<string, TrackPath>();
@@ -176,7 +181,8 @@ export function buildPath(def: TrackDef): TrackPath {
   for (let s = 0; s <= total + step; s += step) {
     const seg = def.segments[Math.min(segIdx, def.segments.length - 1)];
     const pitch = Math.atan(seg.slope);
-    points.push({ x, y, z, yaw, pitch });
+    const roll = Math.max(-0.42, Math.min(0.42, -seg.curve * 22));
+    points.push({ x, y, z, yaw, pitch, roll, curve: seg.curve });
     // advance
     yaw += seg.curve * step;
     x += Math.sin(yaw) * step;
@@ -285,6 +291,8 @@ export function buildPath(def: TrackDef): TrackPath {
         z: a.z + (b.z - a.z) * t,
         yaw: a.yaw + (b.yaw - a.yaw) * t,
         pitch: a.pitch + (b.pitch - a.pitch) * t,
+        roll: a.roll + (b.roll - a.roll) * t,
+        curve: a.curve + (b.curve - a.curve) * t,
       };
     },
     sideVector(yaw: number) {
@@ -293,8 +301,17 @@ export function buildPath(def: TrackDef): TrackPath {
     worldAt(s: number, lane: number) {
       const p = path.sample(s);
       const side = path.sideVector(p.yaw);
-      const off = lane * (def.width / 2 - 1.5);
-      return { x: p.x + side.x * off, y: p.y, z: p.z + side.z * off, yaw: p.yaw };
+      const half = def.width / 2 - 1.5;
+      const off = lane * half;
+      const bankY = Math.sin(p.roll) * off * 0.35;
+      return {
+        x: p.x + side.x * off,
+        y: p.y + bankY,
+        z: p.z + side.z * off,
+        yaw: p.yaw,
+        pitch: p.pitch,
+        roll: p.roll,
+      };
     },
   };
   cache.set(def.id, path);

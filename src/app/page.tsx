@@ -350,137 +350,182 @@ export default function Home() {
 
   return (
     <main className="relative flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-y-auto p-4 py-8 font-display">
-      {/* Backdrop */}
       <div
-        className="fixed inset-0 scale-105"
+        className="fixed inset-0 scale-110 animate-[drift_28s_linear_infinite_alternate]"
         style={{
           backgroundImage: "url(/menu-bg.jpg)",
           backgroundSize: "cover",
           backgroundPosition: "center",
-          filter: "saturate(0.85) brightness(0.38) contrast(1.1)",
+          filter: "saturate(1.05) brightness(0.42) contrast(1.12)",
         }}
       />
-      <div className="fixed inset-0 bg-gradient-to-b from-[#020914]/90 via-[#030d1a]/80 to-[#01060e]/95" />
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_50%_10%,rgba(0,240,255,.18),transparent_55%)]" />
+      <div className="fixed inset-0 bg-gradient-to-b from-[#05080d]/80 via-[#05080d]/55 to-[#05080d]/92" />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_70%_40%,rgba(0,220,255,.14),transparent_50%)]" />
+      <div className="pointer-events-none fixed inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
 
-      {/* Top Bar */}
-      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 py-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-400/50">
-        <span>TURBO RACERS · v2.0</span>
-        <span className="hidden sm:inline">
-          {TRACKS.length} Circuits · Wide 4-Lane Road · Math Gates
-        </span>
-        <span className="flex items-center gap-1.5 text-cyan-300">
-          <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff]" />
-          Online Ready
+      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-5 py-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-300/55">
+        <span>Turbo Racers · Season 1</span>
+        <span className="hidden sm:inline">8-car grid · Banked jungle circuits</span>
+        <span className="flex items-center gap-1.5 text-emerald-300">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" />
+          Live
         </span>
       </div>
 
       <div className="relative z-10 my-auto flex w-full flex-col items-center">
         {screen === "menu" && (
-          <div className="flex w-full max-w-md flex-col items-center gap-6 animate-[fadeUp_.45s_ease-out]">
-            <div className="text-center">
-              <div className="mb-2 flex items-center justify-center gap-3">
-                <span className="h-px w-12 bg-gradient-to-r from-transparent to-cyan-400" />
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.45em] text-cyan-400">
-                  3D Math Car Racing
-                </span>
-                <span className="h-px w-12 bg-gradient-to-l from-transparent to-cyan-400" />
+          <div className="grid w-full max-w-5xl items-center gap-8 animate-[fadeUp_.45s_ease-out] lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="flex flex-col items-center gap-6 lg:items-stretch">
+              <div className="text-center lg:text-left">
+                <div className="mb-2 flex items-center justify-center gap-3 lg:justify-start">
+                  <span className="h-px w-10 bg-gradient-to-r from-transparent to-cyan-400" />
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-[0.45em] text-cyan-300">
+                    Arcade Grand Prix
+                  </span>
+                </div>
+                <h1 className="text-6xl font-black uppercase italic leading-[0.8] tracking-tighter sm:text-7xl">
+                  <span className="block bg-gradient-to-b from-white to-white/55 bg-clip-text text-transparent">
+                    TURBO
+                  </span>
+                  <span
+                    className="block bg-gradient-to-b from-cyan-100 via-cyan-300 to-sky-600 bg-clip-text text-transparent"
+                    style={{ filter: "drop-shadow(0 0 28px rgba(0,240,255,.4))" }}
+                  >
+                    RACERS
+                  </span>
+                </h1>
+                <p className="mt-3 max-w-md text-sm font-semibold uppercase tracking-[0.16em] text-white/45">
+                  Steer, jump, chain math gates and take the flag.
+                </p>
               </div>
-              <h1 className="text-6xl font-black uppercase italic leading-[0.82] tracking-tighter sm:text-7xl">
-                <span className="block bg-gradient-to-b from-white via-white to-white/60 bg-clip-text text-transparent">
-                  TURBO
-                </span>
-                <span
-                  className="block bg-gradient-to-b from-cyan-200 via-cyan-400 to-blue-600 bg-clip-text text-transparent"
-                  style={{ filter: "drop-shadow(0 0 28px rgba(0,240,255,.45))" }}
+
+              <div className="w-full max-w-md space-y-2">
+                <div className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-white/35">
+                  Select circuit
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {TRACKS.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTrackId(t.id)}
+                      className="rounded-lg border px-2.5 py-2 text-left transition touch-manipulation"
+                      style={{
+                        borderColor: trackId === t.id ? "rgba(108,243,255,.7)" : "rgba(255,255,255,.1)",
+                        background: trackId === t.id ? "rgba(0,220,255,.12)" : "rgba(0,0,0,.28)",
+                      }}
+                    >
+                      <span className="block text-[12px] font-black uppercase tracking-wide text-white">
+                        {t.name}
+                      </span>
+                      <span className="block truncate text-[9px] font-bold uppercase tracking-wider text-white/40">
+                        {t.subtitle}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex w-full max-w-md flex-col gap-2.5">
+                <MenuRow
+                  index="01"
+                  label={busy ? "Connecting…" : "Quick Race"}
+                  sub="Online matchmaking · fill with rivals"
+                  accent="primary"
+                  onClick={() => enterRoom("quick")}
+                  disabled={busy}
+                />
+                <MenuRow
+                  index="02"
+                  label="Play with Bots"
+                  sub={`Instant GP · ${TRACKS.find((t) => t.id === trackId)?.name}`}
+                  accent="ghost"
+                  onClick={() => playBots(trackId)}
+                />
+                <MenuRow
+                  index="03"
+                  label="Play with Friends"
+                  sub="Private lobby · invite code"
+                  accent="ghost"
+                  onClick={() => setScreen("friends")}
+                />
+                <MenuRow
+                  index="04"
+                  label="Garage"
+                  sub="Livery, kits & driver tag"
+                  accent="ghost"
+                  onClick={() => setScreen("customize")}
+                  badge={profile.name}
+                />
+                <MenuRow
+                  index="05"
+                  label="Leaderboard"
+                  sub="Global circuit records"
+                  accent="ghost"
+                  onClick={() => {
+                    void loadBoard();
+                    setScreen("leaderboard");
+                  }}
+                />
+              </div>
+
+              {error && (
+                <div className="w-full max-w-md rounded-lg border border-red-500/50 bg-red-500/15 px-3.5 py-2.5 text-center font-mono text-xs uppercase tracking-widest text-red-300">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex w-full max-w-md items-center gap-3">
+                <div className="flex-1">
+                  <Toggle
+                    on={sfxOn}
+                    label="SFX"
+                    onChange={(v) => {
+                      setSfxOn(v);
+                      safeAudio(() => audio.setEnabled(v));
+                    }}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Toggle
+                    on={musicOn}
+                    label="Music"
+                    onChange={(v) => {
+                      setMusicOn(v);
+                      safeAudio(() => {
+                        audio.setMusicEnabled(v);
+                        if (v) audio.startMusic();
+                        else audio.stopMusic();
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/35 lg:justify-start">
+                <span>A/D Steer</span>
+                <span className="text-cyan-400">·</span>
+                <span>Space Jump</span>
+                <span className="text-cyan-400">·</span>
+                <span>Shift Nitro</span>
+              </div>
+            </div>
+
+            <div className="hidden overflow-hidden rounded-2xl border border-white/12 bg-black/30 shadow-[0_30px_80px_rgba(0,0,0,.45)] lg:block">
+              <CharacterPreview color={profile.color} hat={profile.hat} height={420} />
+              <div className="flex items-center justify-between border-t border-white/10 px-5 py-3">
+                <div>
+                  <div className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-white/35">
+                    Your driver
+                  </div>
+                  <div className="text-lg font-black uppercase tracking-wide text-white">{profile.name}</div>
+                </div>
+                <button
+                  onClick={() => setScreen("customize")}
+                  className="rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-cyan-200"
                 >
-                  RACERS
-                </span>
-              </h1>
-            </div>
-
-            <div className="flex w-full flex-col gap-2.5">
-              <MenuRow
-                index="01"
-                label={busy ? "Connecting…" : "Play"}
-                sub="Quick online matchmaking"
-                accent="primary"
-                onClick={() => enterRoom("quick")}
-                disabled={busy}
-              />
-              <MenuRow
-                index="02"
-                label="Play with Bots"
-                sub="Instant car race · 8 Drivers"
-                accent="ghost"
-                onClick={() => playBots()}
-              />
-              <MenuRow
-                index="03"
-                label="Play with Friends"
-                sub="Private lobby · invite code"
-                accent="ghost"
-                onClick={() => setScreen("friends")}
-              />
-              <MenuRow
-                index="04"
-                label="Customize Car"
-                sub="Livery color & body kits"
-                accent="ghost"
-                onClick={() => setScreen("customize")}
-                badge={profile.name}
-              />
-              <MenuRow
-                index="05"
-                label="Leaderboard"
-                sub="Global lap records"
-                accent="ghost"
-                onClick={() => {
-                  void loadBoard();
-                  setScreen("leaderboard");
-                }}
-              />
-            </div>
-
-            {error && (
-              <div className="w-full border border-red-500/50 bg-red-500/15 px-3.5 py-2.5 text-center font-mono text-xs uppercase tracking-widest text-red-300 rounded-lg">
-                {error}
+                  Edit garage
+                </button>
               </div>
-            )}
-
-            <div className="flex w-full items-center gap-3">
-              <div className="flex-1">
-                <Toggle
-                  on={sfxOn}
-                  label="SFX"
-                  onChange={(v) => {
-                    setSfxOn(v);
-                    safeAudio(() => audio.setEnabled(v));
-                  }}
-                />
-              </div>
-              <div className="flex-1">
-                <Toggle
-                  on={musicOn}
-                  label="Music"
-                  onChange={(v) => {
-                    setMusicOn(v);
-                    safeAudio(() => {
-                      audio.setMusicEnabled(v);
-                      if (v) audio.startMusic();
-                      else audio.stopMusic();
-                    });
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
-              <span>A/D Steer</span>
-              <span className="text-cyan-400">·</span>
-              <span>Space Jump</span>
-              <span className="text-cyan-400">·</span>
-              <span>Shift Nitro</span>
             </div>
           </div>
         )}
@@ -554,7 +599,7 @@ export default function Home() {
               </div>
             </Field>
 
-            <ActionButton full accent="primary" onClick={() => playBots()}>
+            <ActionButton full accent="primary" onClick={() => playBots(trackId)}>
               Test Drive Car →
             </ActionButton>
           </Panel>

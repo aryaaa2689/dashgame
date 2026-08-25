@@ -34,10 +34,10 @@ websocket server is required.
   | `-1 … -5` | Subtracts that many speed points, stumble + camera shake |
   | `×2 / ×3 / ×4` | Multiplies current speed for a short, decaying burst |
 - Plus ramps (big air), bumps, wall bounces and slope-driven acceleration.
-- Physics feel: run-bounce, lean into turns, stumble on impact, camera shake, FOV punch on bursts.
-- HUD: telemetry position plate, gap-to-next readout, live race-order ladder, analog tachometer with
-  redline + turbo ring, timer, score, circuit progress strip with rival ghost markers, 3‑2‑1‑GO
-  countdown and a full results screen.
+- Physics feel: speed-sensitive grip, slope gravity, drafting, wall restitution, car-to-car bumps,
+  landing squash, banked corners, chase-cam look-ahead and FOV punch on bursts.
+- HUD: position plate, gap-to-next, live order ladder, analog tachometer with redline + nitro ring,
+  timer, score, circuit minimap, progress strip with rival markers, 3‑2‑1‑GO and a full results screen.
 
 ### Presentation
 - **Rendering**: PBR materials throughout (`MeshStandardMaterial` / `MeshPhysicalMaterial`), real
