@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RaceEngine, RacerConfig, HudState, RaceResult } from "@/game/engine";
-import { getTrack } from "@/lib/track";
 import { audio } from "@/game/audio";
 
 const ORD = ["1", "2", "3", "4", "5", "6", "7", "8"];
@@ -157,20 +156,10 @@ export default function RaceCanvas({
   }, [hud?.countdown, go]);
 
   const eng = () => engineRef.current;
-  const track = getTrack(trackId);
   const cd = hud?.countdown ?? null;
   const place = hud?.place ?? 1;
-  const total = hud?.total ?? racers.length;
   const boost = hud?.boostCharge ?? 0;
   const ready = boost >= 1;
-  const leader = hud?.racers?.[0];
-  const gapToNext = (() => {
-    if (!hud?.racers || place <= 1) return null;
-    const me = hud.racers.find((r) => r.isPlayer);
-    const ahead = hud.racers[place - 2];
-    if (!me || !ahead) return null;
-    return (ahead.progress - me.progress) * 100;
-  })();
 
   return (
     <div className="fixed inset-0 select-none overflow-hidden bg-black font-display">
@@ -181,111 +170,61 @@ export default function RaceCanvas({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(0,0,0,0.45) 100%)",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.055]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, rgba(255,255,255,.9) 0px, rgba(255,255,255,.9) 1px, transparent 1px, transparent 3px)",
+            "radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.08) 0%, transparent 52%, rgba(0,0,0,0.22) 100%)",
         }}
       />
 
-      {/* ══ TOP BAR ══ */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-3 pt-3 sm:px-5 sm:pt-4">
-        {/* left: exit + track */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              audio.uiBack();
-              onExit();
-            }}
-            className="pointer-events-auto clip-plate border border-white/10 bg-black/55 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60 backdrop-blur-md transition hover:border-white/25 hover:text-white"
+
+      {/* Reference-style gameplay HUD: big arcade placement, minimal clutter */}
+      <button
+        onClick={() => {
+          audio.uiBack();
+          onExit();
+        }}
+        className="pointer-events-auto absolute left-3 top-3 rounded-full border border-white/25 bg-black/25 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white/75 backdrop-blur-sm transition hover:bg-black/45 hover:text-white sm:left-5 sm:top-4"
+      >
+        Exit
+      </button>
+
+      <div className="pointer-events-none absolute inset-x-0 top-5 flex justify-center sm:top-7">
+        <div
+          className="relative -rotate-2 text-[4.8rem] font-black italic leading-none tracking-[-0.08em] sm:text-[5.9rem]"
+          style={{
+            color: "#ffe95a",
+            WebkitTextStroke: "5px #15150f",
+            textShadow:
+              "0 6px 0 #7d3f28, 0 10px 18px rgba(0,0,0,.42), 0 0 14px rgba(255,235,90,.35)",
+          }}
+        >
+          <span
+            className="absolute inset-0 bg-gradient-to-b from-white via-[#fff060] to-[#ff8b38] bg-clip-text text-transparent"
+            style={{ WebkitTextStroke: "0 transparent" }}
           >
-            Exit
-          </button>
-          <div className="clip-plate hidden border border-white/10 bg-black/45 px-3 py-1.5 backdrop-blur-md sm:block">
-            <div className="text-[8px] font-semibold uppercase tracking-[0.3em] text-white/35">
-              Circuit
-            </div>
-            <div className="-mt-0.5 text-[13px] font-semibold uppercase tracking-wider text-white/85">
-              {track.name}
-            </div>
-          </div>
+            {ORD[place - 1] ?? "1"}
+            <span className="text-[0.48em] tracking-[-0.12em]">{(SUF[place - 1] ?? "TH").toLowerCase()}</span>
+          </span>
+          <span aria-hidden="true">
+            {ORD[place - 1] ?? "1"}
+            <span className="text-[0.48em] tracking-[-0.12em]">{(SUF[place - 1] ?? "TH").toLowerCase()}</span>
+          </span>
         </div>
+      </div>
 
-        {/* center: position plate */}
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            <div
-              className="clip-plate flex items-end gap-1 border border-white/15 bg-black/60 px-5 py-2 backdrop-blur-xl"
-              style={{
-                boxShadow:
-                  place === 1
-                    ? "0 0 30px rgba(53,224,138,.28), inset 0 1px 0 rgba(255,255,255,.12)"
-                    : "0 8px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08)",
-              }}
-            >
-              <span
-                className="tabnum text-5xl font-bold leading-[0.85] tracking-tight sm:text-6xl"
-                style={{
-                  color: place === 1 ? "#35e08a" : "#fff",
-                  textShadow: place === 1 ? "0 0 24px rgba(53,224,138,.5)" : "0 2px 10px rgba(0,0,0,.6)",
-                }}
-              >
-                {ORD[place - 1] ?? "1"}
-              </span>
-              <span className="mb-1.5 text-lg font-semibold uppercase tracking-tight text-white/50">
-                {SUF[place - 1] ?? "TH"}
-              </span>
-              <span className="mb-2 ml-1.5 border-l border-white/15 pl-2 text-[11px] font-medium uppercase tracking-widest text-white/40">
-                of {total}
-              </span>
-            </div>
-            {place === 1 && (
-              <div className="pointer-events-none absolute inset-0 animate-[pulseRing_2.4s_ease-out_infinite] border border-emerald-400/40 clip-plate" />
-            )}
-          </div>
-          {gapToNext !== null && (
-            <div className="mt-1.5 font-mono text-[10px] font-medium tracking-widest text-white/45">
-              ▲ {gapToNext.toFixed(1)}% TO P{place - 1}
-            </div>
-          )}
-          {place === 1 && leader && (
-            <div className="mt-1.5 font-mono text-[10px] font-medium tracking-widest text-emerald-300/70">
-              ◆ LEADING
-            </div>
-          )}
+      <div className="pointer-events-none absolute right-3 top-3 flex flex-col items-end gap-1 sm:right-5 sm:top-4">
+        <div className="rounded-full bg-black/22 px-3 py-1 text-right font-black italic text-white/80 backdrop-blur-sm [text-shadow:0_2px_4px_rgba(0,0,0,.75)]">
+          <span className="text-[10px] uppercase tracking-widest text-white/55">Speed</span>{" "}
+          <span className="tabnum text-sm">{Math.round(hud?.speed ?? 0)}</span>
         </div>
-
-        {/* right: telemetry */}
-        <div className="flex flex-col items-end gap-1.5">
-          <Tach speed={hud?.speed ?? 0} boost={boost} />
-          <div className="clip-plate-r flex items-center gap-3 border border-white/10 bg-black/50 px-3 py-1.5 backdrop-blur-md">
-            <div className="text-right">
-              <div className="text-[8px] font-semibold uppercase tracking-[0.25em] text-white/35">
-                Time
-              </div>
-              <div className="tabnum -mt-0.5 font-mono text-sm font-medium text-white/90">
-                {(hud?.time ?? 0).toFixed(2)}
-              </div>
-            </div>
-            <div className="h-7 w-px bg-white/10" />
-            <div className="text-right">
-              <div className="text-[8px] font-semibold uppercase tracking-[0.25em] text-white/35">
-                Score
-              </div>
-              <div className="tabnum -mt-0.5 font-mono text-sm font-medium text-amber-300">
-                {String(hud?.score ?? 0).padStart(3, "0")}
-              </div>
-            </div>
-          </div>
+        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-black/25 shadow-[0_1px_4px_rgba(0,0,0,.45)]">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-yellow-300 to-orange-400 transition-[width]"
+            style={{ width: `${Math.round(boost * 100)}%` }}
+          />
         </div>
       </div>
 
       {/* ══ LEFT: race order ladder ══ */}
-      <div className="pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 flex-col gap-1 sm:flex sm:left-5">
+      <div className="pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 flex-col gap-1 sm:left-5">
         {hud?.racers.slice(0, 8).map((r, i) => (
           <div
             key={r.id}
@@ -314,7 +253,7 @@ export default function RaceCanvas({
       </div>
 
       {/* ══ BOTTOM: progress telemetry strip ══ */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden">
         <div className="mx-3 mb-3 sm:mx-5 sm:mb-4">
           <div className="mb-1.5 flex items-end justify-between px-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-[0.3em] text-white/35">
@@ -412,7 +351,7 @@ export default function RaceCanvas({
         </div>
       ) : (
         /* desktop: minimal key legend + turbo status */
-        <div className="pointer-events-none absolute bottom-14 left-1/2 flex -translate-x-1/2 items-center gap-2">
+        <div className="pointer-events-none absolute bottom-14 left-1/2 hidden -translate-x-1/2 items-center gap-2">
           {[
             { k: "A / D", l: "Steer" },
             { k: "SPACE", l: "Jump" },

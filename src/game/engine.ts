@@ -78,8 +78,8 @@ function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number,
 }
 
 /**
- * Sleek telemetry-style nameplate (dark glass pill + thin accent rule)
- * instead of the old chunky outlined arcade text.
+ * Floating arcade racer label, matching the supplied reference: bold white
+ * italic text with a chunky dark outline and no glassy UI plate.
  */
 function namePlate(text: string, accent: string, isPlayer: boolean) {
   const c = document.createElement("canvas");
@@ -87,43 +87,41 @@ function namePlate(text: string, accent: string, isPlayer: boolean) {
   c.height = 160;
   const g = c.getContext("2d")!;
   const label = text.toUpperCase();
-  g.font = `700 ${isPlayer ? 62 : 52}px "Barlow Condensed", "Arial Narrow", Arial, sans-serif`;
-  const tw = g.measureText(label).width;
-  const padX = 34;
-  const w = Math.min(500, tw + padX * 2);
-  const h = isPlayer ? 84 : 72;
-  const x = (512 - w) / 2;
-  const y = (160 - h) / 2;
+  const fontSize = isPlayer ? 70 : 54;
 
-  g.shadowColor = "rgba(0,0,0,0.55)";
-  g.shadowBlur = 16;
-  g.shadowOffsetY = 4;
-  roundRect(g, x, y, w, h, h / 2);
-  g.fillStyle = isPlayer ? "rgba(10,14,12,0.82)" : "rgba(10,14,12,0.6)";
-  g.fill();
-  g.shadowColor = "transparent";
-  g.lineWidth = isPlayer ? 4 : 2.5;
-  g.strokeStyle = isPlayer ? "rgba(255,255,255,0.85)" : `${accent}bb`;
-  g.stroke();
-
-  // accent dot
-  g.beginPath();
-  g.arc(x + 22, 80, 9, 0, Math.PI * 2);
-  g.fillStyle = accent;
-  g.fill();
-
+  g.font = `900 italic ${fontSize}px "Arial Black", "Barlow Condensed", Arial, sans-serif`;
   g.textAlign = "center";
   g.textBaseline = "middle";
-  g.fillStyle = isPlayer ? "#ffffff" : "rgba(255,255,255,0.9)";
-  g.font = `700 ${isPlayer ? 62 : 52}px "Barlow Condensed", "Arial Narrow", Arial, sans-serif`;
-  g.fillText(label, 256 + 8, 82);
+  g.shadowColor = "rgba(0,0,0,0.35)";
+  g.shadowBlur = 10;
+  g.shadowOffsetY = 5;
+  g.lineJoin = "round";
+  g.lineWidth = isPlayer ? 13 : 10;
+  g.strokeStyle = "#171717";
+  g.strokeText(label, 256, 78);
+  g.lineWidth = isPlayer ? 5 : 4;
+  g.strokeStyle = isPlayer ? "rgba(255,255,255,0.9)" : accent;
+  g.strokeText(label, 256, 78);
+  g.shadowColor = "transparent";
+  g.fillStyle = "#ffffff";
+  g.fillText(label, 256, 78);
+
+  // little color slash behind opponent names, kept subtle for readability
+  if (!isPlayer) {
+    g.globalCompositeOperation = "destination-over";
+    g.fillStyle = `${accent}88`;
+    g.beginPath();
+    g.roundRect(170, 52, 172, 42, 18);
+    g.fill();
+    g.globalCompositeOperation = "source-over";
+  }
 
   const t = new THREE.CanvasTexture(c);
   t.anisotropy = 4;
   const sp = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, opacity: 0.95 }),
+    new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, opacity: isPlayer ? 1 : 0.88 }),
   );
-  sp.scale.set(isPlayer ? 3.4 : 2.9, isPlayer ? 1.06 : 0.9, 1);
+  sp.scale.set(isPlayer ? 2.45 : 2.05, isPlayer ? 0.76 : 0.62, 1);
   return sp;
 }
 
