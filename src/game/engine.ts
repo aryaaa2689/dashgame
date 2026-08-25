@@ -1,8 +1,4 @@
 import * as THREE from "three";
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { buildPath, getTrack, TrackPath, Feature, PickupOp } from "@/lib/track";
 import { makeCar, animateCar, CarParts } from "@/game/cars";
 import { buildWorld } from "@/game/world";
@@ -72,14 +68,14 @@ type Racer = {
   netLane?: number;
 };
 
-const GRAVITY = 36;
-const JUMP_VEL = 13.2;
-const CRUISE = 47;
-const ENGINE = 34;
-const DRAG = 0.011;
-const ROLL_RES = 3.4;
-const LANE_LIMIT = 0.96;
-const WALL_REST = 0.38;
+const GRAVITY = 42;
+const JUMP_VEL = 12.4;
+const CRUISE = 82;
+const ENGINE = 62;
+const DRAG = 0.007;
+const ROLL_RES = 2.2;
+const LANE_LIMIT = 0.94;
+const WALL_REST = 0.28;
 
 function namePlate(text: string, accent: string, isPlayer: boolean) {
   const c = document.createElement("canvas");
@@ -109,7 +105,7 @@ function namePlate(text: string, accent: string, isPlayer: boolean) {
   const sp = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, opacity: isPlayer ? 1 : 0.88 }),
   );
-  sp.scale.set(isPlayer ? 2.6 : 2.1, isPlayer ? 0.8 : 0.65, 1);
+  sp.scale.set(1.7, 0.52, 1);
   return sp;
 }
 
@@ -149,7 +145,6 @@ type Dust = { sprite: THREE.Sprite; vel: THREE.Vector3; life: number };
 
 export class RaceEngine {
   renderer: THREE.WebGLRenderer;
-  composer: EffectComposer;
   scene = new THREE.Scene();
   camera: THREE.PerspectiveCamera;
   path: TrackPath;
@@ -199,16 +194,16 @@ export class RaceEngine {
     this.trackName = def.name;
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.08;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    this.camera = new THREE.PerspectiveCamera(56, canvas.clientWidth / canvas.clientHeight, 0.4, 1600);
-    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 80, 520);
+    this.camera = new THREE.PerspectiveCamera(62, canvas.clientWidth / canvas.clientHeight, 0.35, 700);
+    this.scene.fog = new THREE.Fog(new THREE.Color(def.fog), 60, 280);
     this.scene.background = new THREE.Color(def.fog);
 
     this.speedLineMaterial = new THREE.LineBasicMaterial({
@@ -219,39 +214,25 @@ export class RaceEngine {
       blending: THREE.AdditiveBlending,
     });
 
-    const hemi = new THREE.HemisphereLight(0xe8f4ff, 0x2a3a22, 0.95);
-    this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(def.id === "sunset-lagoon" ? 0xffd2a8 : 0xfff3dc, 2.35);
+    this.scene.add(new THREE.HemisphereLight(0xe8f4ff, 0x2a3a22, 1.05));
+    const sun = new THREE.DirectionalLight(def.id === "sunset-lagoon" ? 0xffd2a8 : 0xfff3dc, 1.85);
     sun.position.set(40, 70, 28);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1536, 1536);
-    sun.shadow.camera.left = -36;
-    sun.shadow.camera.right = 36;
-    sun.shadow.camera.top = 36;
-    sun.shadow.camera.bottom = -36;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -22;
+    sun.shadow.camera.right = 22;
+    sun.shadow.camera.top = 22;
+    sun.shadow.camera.bottom = -22;
     sun.shadow.camera.near = 5;
-    sun.shadow.camera.far = 180;
-    sun.shadow.bias = -0.0016;
-    sun.shadow.normalBias = 0.035;
+    sun.shadow.camera.far = 120;
+    sun.shadow.bias = -0.0018;
     this.scene.add(sun);
     this.scene.add(sun.target);
     this.sun = sun;
-    const fill = new THREE.DirectionalLight(0xb7d8ff, 0.38);
-    fill.position.set(-28, 18, -16);
-    this.scene.add(fill);
-    const rim = new THREE.DirectionalLight(0x7affd0, 0.22);
-    rim.position.set(10, 12, -30);
-    this.scene.add(rim);
+    this.scene.add(new THREE.DirectionalLight(0xb7d8ff, 0.28).translateX(-20));
 
     const w = buildWorld(this.scene, this.path);
     this.featureMeshes = w.featureMeshes;
-
-    this.composer = new EffectComposer(this.renderer);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.composer.addPass(
-      new UnrealBloomPass(new THREE.Vector2(canvas.clientWidth, canvas.clientHeight), 0.24, 0.65, 0.88),
-    );
-    this.composer.addPass(new OutputPass());
 
     configs.forEach((cfg, i) => {
       const parts = makeCar(cfg.color, cfg.hat);
@@ -285,17 +266,6 @@ export class RaceEngine {
       };
       if (cfg.isPlayer) {
         this.player = r;
-        const label = namePlate("YOU", cfg.color, true);
-        this.scene.add(label);
-        r.label = label;
-        const arrow = new THREE.Mesh(
-          new THREE.ConeGeometry(0.26, 0.42, 4),
-          new THREE.MeshBasicMaterial({ color: 0x7af7ff, depthTest: false, transparent: true, opacity: 0.92 }),
-        );
-        arrow.rotation.x = Math.PI;
-        arrow.renderOrder = 10;
-        this.scene.add(arrow);
-        r.arrow = arrow;
       } else {
         const label = namePlate(cfg.name.slice(0, 9), cfg.color, false);
         this.scene.add(label);
@@ -304,7 +274,7 @@ export class RaceEngine {
       this.racers.push(r);
     });
 
-    for (let i = 0; i < 36; i++) {
+    for (let i = 0; i < 18; i++) {
       const geom = new THREE.BufferGeometry();
       geom.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
       const line = new THREE.Line(geom, this.speedLineMaterial);
@@ -601,10 +571,10 @@ export class RaceEngine {
     }
 
     // Speed-sensitive grip. Fast cars wash wide; slow cars snap.
-    const grip = 1 / (1 + r.speed * 0.016);
-    const airMul = grounded ? 1 : 0.28;
-    const steerForce = steer * (10.5 + Math.abs(sample.curve) * 40) * grip * airMul;
-    r.laneVel += (steerForce - r.laneVel * (3.4 + r.speed * 0.012)) * dt;
+    const grip = 1 / (1 + r.speed * 0.009);
+    const airMul = grounded ? 1 : 0.32;
+    const steerForce = steer * (16.5 + Math.abs(sample.curve) * 28) * grip * airMul;
+    r.laneVel += (steerForce - r.laneVel * (4.2 + r.speed * 0.008)) * dt;
     r.slip += (r.laneVel * 0.22 - r.slip) * Math.min(1, dt * 6);
     r.lane += r.laneVel * dt;
 
@@ -683,8 +653,8 @@ export class RaceEngine {
     const slope = sample.pitch;
     const skill = r.cfg.isPlayer ? 1 : 0.9 + (r.cfg.skill ?? 0.7) * 0.15;
     const nitro = r.boost > 0 ? 1 : 0;
-    const cruise = CRUISE * skill + r.speedMod + r.draft * 7 + nitro * 18;
-    const drive = ENGINE * skill + nitro * 42;
+    const cruise = CRUISE * skill + r.speedMod + r.draft * 10 + nitro * 28;
+    const drive = ENGINE * skill + nitro * 70;
     const drag = r.speed * r.speed * DRAG + ROLL_RES;
     const grav = Math.sin(slope) * 26;
     r.accel = drive * (1 - Math.min(0.92, r.speed / Math.max(12, cruise + 36))) - drag - grav;
@@ -781,8 +751,8 @@ export class RaceEngine {
     const gapAhead = ahead ? (ahead.dist - this.player.dist) / Math.max(12, this.player.speed) : 0;
 
     try {
-      audio.updateEngine(
-        racing && !this.player.finished ? this.player.speed / 70 : 0,
+        audio.updateEngine(
+        racing && !this.player.finished ? this.player.speed / 110 : 0,
         this.player.air > 0.05 ? 1 : 0,
       );
     } catch {}
@@ -804,27 +774,26 @@ export class RaceEngine {
       });
 
       if (r.label) {
-        r.label.position.set(w.x, w.y + r.air + (r.cfg.isPlayer ? 2.45 : 2.15), w.z);
-        (r.label.material as THREE.SpriteMaterial).opacity = r.cfg.isPlayer ? 1 : 0.82;
-      }
-      if (r.arrow) {
-        r.arrow.position.set(w.x, w.y + r.air + 2.9 + Math.sin(t * 6) * 0.14, w.z);
+        const near = Math.abs(r.dist - this.player.dist);
+        r.label.visible = near < 28;
+        r.label.position.set(w.x, w.y + r.air + 1.85, w.z);
+        (r.label.material as THREE.SpriteMaterial).opacity = THREE.MathUtils.clamp(1 - near / 28, 0, 0.85);
       }
     }
 
     // Chase camera with speed look-ahead and landing dip
     const p = this.player;
-    const lookAhead = 12 + p.speed * 0.12;
-    const back = 8.6 + Math.min(3.2, p.speed * 0.03);
-    const camSample = this.path.worldAt(Math.max(0, p.dist - back), p.lane * 0.42);
-    const lookSample = this.path.worldAt(p.dist + lookAhead, p.lane * 0.22);
-    const desired = new THREE.Vector3(camSample.x, camSample.y + 3.35 + p.air * 0.42 - p.landSquash * 0.35, camSample.z);
+    const lookAhead = 9 + p.speed * 0.07;
+    const back = 6.1 + Math.min(1.6, p.speed * 0.012);
+    const camSample = this.path.worldAt(Math.max(0, p.dist - back), p.lane * 0.28);
+    const lookSample = this.path.worldAt(p.dist + lookAhead, p.lane * 0.16);
+    const desired = new THREE.Vector3(camSample.x, camSample.y + 2.15 + p.air * 0.28 - p.landSquash * 0.2, camSample.z);
     if (this.camPos.lengthSq() === 0) {
       this.camPos.copy(desired);
       this.camLook.set(lookSample.x, lookSample.y + 1.5, lookSample.z);
     }
     this.camPos.lerp(desired, Math.min(1, dt * 6.2));
-    this.camLook.lerp(new THREE.Vector3(lookSample.x, lookSample.y + 1.45 + p.air * 0.15, lookSample.z), Math.min(1, dt * 7));
+    this.camLook.lerp(new THREE.Vector3(lookSample.x, lookSample.y + 0.85 + p.air * 0.12, lookSample.z), Math.min(1, dt * 8));
     this.camera.position.copy(this.camPos);
     if (this.shake > 0) {
       this.camera.position.x += (Math.random() - 0.5) * this.shake;
@@ -832,7 +801,7 @@ export class RaceEngine {
       this.shake = Math.max(0, this.shake - dt * 2.4);
     }
     this.camera.lookAt(this.camLook);
-    const fovWant = 54 + Math.min(16, (p.speed - 40) * 0.18 + p.boost * 8 + Math.max(0, p.speedMult - 1) * 8);
+    const fovWant = 60 + Math.min(10, (p.speed - 70) * 0.12 + p.boost * 6);
     this.camera.fov += (fovWant - this.camera.fov) * Math.min(1, dt * 4.5);
     this.camera.updateProjectionMatrix();
 
@@ -851,11 +820,11 @@ export class RaceEngine {
       pos.needsUpdate = true;
     }
 
-    if (p.air < 0.04 && p.speed > 38 && racing) {
+    if (p.air < 0.04 && p.speed > 70 && racing) {
       this.dustSpawn += dt;
-      if (this.dustSpawn > 0.045) {
+      if (this.dustSpawn > 0.09) {
         this.dustSpawn = 0;
-        this.spawnDust(p, p.boost > 0.2 ? 2 : 1);
+        this.spawnDust(p, 1);
       }
     }
     for (let i = this.dust.length - 1; i >= 0; i--) {
@@ -912,7 +881,7 @@ export class RaceEngine {
       total: this.racers.length,
       progress: Math.min(1, p.dist / this.path.length),
       countdown,
-      speed: p.speed * 2.15,
+      speed: p.speed * 2.35,
       boostCharge: this.boostCharge,
       time: this.time,
       score: this.score,
@@ -929,12 +898,11 @@ export class RaceEngine {
       })),
     });
 
-    this.composer.render();
+    this.renderer.render(this.scene, this.camera);
   };
 
   resize(w: number, h: number) {
     this.renderer.setSize(w, h, false);
-    this.composer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
   }
