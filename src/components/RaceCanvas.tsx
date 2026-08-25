@@ -103,6 +103,7 @@ export default function RaceCanvas({
   const [hud, setHud] = useState<HudState | null>(null);
   const [go, setGo] = useState(false);
   const [touchUi, setTouchUi] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     setTouchUi(window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900);
@@ -116,8 +117,21 @@ export default function RaceCanvas({
       engine.resize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
     window.addEventListener("resize", onResize);
     onResize();
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.key === "p" || e.key === "P") {
+        setPaused((prev) => {
+          const next = !prev;
+          if (engineRef.current) engineRef.current.running = !next;
+          return next;
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+
     return () => {
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("keydown", handleKey);
       engine.dispose();
       engineRef.current = null;
       onEngine?.(null);
@@ -128,6 +142,17 @@ export default function RaceCanvas({
   useEffect(() => {
     if (hud?.countdown === 0 && !go) setGo(true);
   }, [hud?.countdown, go]);
+
+  const togglePause = () => {
+    try {
+      audio.uiClick();
+    } catch {}
+    setPaused((prev) => {
+      const next = !prev;
+      if (engineRef.current) engineRef.current.running = !next;
+      return next;
+    });
+  };
 
   const eng = () => engineRef.current;
   const cd = hud?.countdown ?? null;
@@ -148,17 +173,12 @@ export default function RaceCanvas({
         }}
       />
 
-      {/* Exit Button */}
+      {/* Pause Button */}
       <button
-        onClick={() => {
-          try {
-            audio.uiBack();
-          } catch {}
-          onExit();
-        }}
-        className="pointer-events-auto absolute left-3 top-3 z-20 rounded-full border border-white/20 bg-black/50 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md transition hover:bg-black/70 hover:text-white sm:left-5 sm:top-4"
+        onClick={togglePause}
+        className="pointer-events-auto absolute left-3 top-3 z-20 rounded-full border border-white/20 bg-black/50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-white/90 backdrop-blur-md transition hover:bg-black/70 hover:text-cyan-300 touch-manipulation sm:left-5 sm:top-4"
       >
-        Exit
+        ❚❚ Pause
       </button>
 
       {/* Race Position Overlay (Top Center Arcade Badge) */}
@@ -273,7 +293,7 @@ export default function RaceCanvas({
               onPointerDown={() => eng()?.touch(-1)}
               onPointerUp={() => eng()?.touch(0)}
               onPointerLeave={() => eng()?.touch(0)}
-              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/50 text-2xl text-white/80 backdrop-blur-md active:scale-95 active:border-cyan-400 active:bg-cyan-500/20 active:text-white"
+              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/50 text-2xl text-white/80 backdrop-blur-md active:scale-95 active:border-cyan-400 active:bg-cyan-500/20 active:text-white touch-manipulation"
             >
               ◀
             </button>
@@ -281,7 +301,7 @@ export default function RaceCanvas({
               onPointerDown={() => eng()?.touch(1)}
               onPointerUp={() => eng()?.touch(0)}
               onPointerLeave={() => eng()?.touch(0)}
-              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/50 text-2xl text-white/80 backdrop-blur-md active:scale-95 active:border-cyan-400 active:bg-cyan-500/20 active:text-white"
+              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/50 text-2xl text-white/80 backdrop-blur-md active:scale-95 active:border-cyan-400 active:bg-cyan-500/20 active:text-white touch-manipulation"
             >
               ▶
             </button>
@@ -291,7 +311,7 @@ export default function RaceCanvas({
           <div className="flex items-center gap-3">
             <button
               onPointerDown={() => eng()?.doBoost()}
-              className={`relative flex h-16 w-16 flex-col items-center justify-center rounded-2xl border backdrop-blur-md transition active:scale-95 ${
+              className={`relative flex h-16 w-16 flex-col items-center justify-center rounded-2xl border backdrop-blur-md transition active:scale-95 touch-manipulation ${
                 ready
                   ? "border-yellow-400 bg-yellow-500/25 text-yellow-300 shadow-[0_0_24px_rgba(255,215,0,0.5)] animate-pulse"
                   : "border-white/15 bg-black/50 text-white/40"
@@ -303,7 +323,7 @@ export default function RaceCanvas({
 
             <button
               onPointerDown={() => eng()?.doJump()}
-              className="flex h-16 w-16 flex-col items-center justify-center rounded-2xl border border-emerald-400/40 bg-emerald-500/20 text-emerald-300 backdrop-blur-md active:scale-95 active:bg-emerald-400/40"
+              className="flex h-16 w-16 flex-col items-center justify-center rounded-2xl border border-emerald-400/40 bg-emerald-500/20 text-emerald-300 backdrop-blur-md active:scale-95 active:bg-emerald-400/40 touch-manipulation"
             >
               <span className="text-xl">▲</span>
               <span className="text-[9px] font-black uppercase tracking-widest">JUMP</span>
@@ -361,6 +381,40 @@ export default function RaceCanvas({
             style={{ textShadow: "0 0 60px rgba(0,255,136,.9)" }}
           >
             GO!
+          </div>
+        </div>
+      )}
+
+      {/* Pause Menu Overlay */}
+      {paused && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/75 backdrop-blur-md">
+          <div className="w-full max-w-sm border border-cyan-400/40 bg-slate-900/90 p-6 text-center rounded-2xl shadow-[0_0_50px_rgba(0,240,255,0.25)] animate-[fadeUp_.25s_ease-out]">
+            <h2 className="mb-1 text-2xl font-black uppercase tracking-widest text-cyan-400">
+              GAME PAUSED
+            </h2>
+            <p className="mb-6 font-mono text-xs uppercase tracking-wider text-white/50">
+              Race on pause
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={togglePause}
+                className="w-full rounded-xl border border-cyan-400/60 bg-cyan-500/20 py-3 text-sm font-black uppercase tracking-wider text-cyan-300 transition hover:bg-cyan-500/30 touch-manipulation"
+              >
+                Resume Race
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    audio.uiBack();
+                  } catch {}
+                  onExit();
+                }}
+                className="w-full rounded-xl border border-white/20 bg-white/5 py-3 text-sm font-black uppercase tracking-wider text-white/70 transition hover:bg-white/10 hover:text-white touch-manipulation"
+              >
+                Exit to Main Menu
+              </button>
+            </div>
           </div>
         </div>
       )}
