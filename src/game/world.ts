@@ -11,8 +11,8 @@ function asphaltRoadTexture(grassA: string, grassB: string) {
   g.fillStyle = "#1e2229";
   g.fillRect(0, 0, 1024, 1024);
 
-  // Asphalt noise / grain
-  for (let i = 0; i < 25000; i++) {
+  // Asphalt grain
+  for (let i = 0; i < 28000; i++) {
     const x = Math.random() * 1024;
     const y = Math.random() * 1024;
     const shade = Math.random() > 0.5 ? 255 : 0;
@@ -21,30 +21,28 @@ function asphaltRoadTexture(grassA: string, grassB: string) {
     g.fillRect(x, y, 2, 2);
   }
 
-  // Outer red-and-white curb strips (kerbs)
+  // Red-and-white curb strips (kerbs)
   const kerbWidth = 48;
   const kerbSegmentH = 64;
   for (let y = 0; y < 1024; y += kerbSegmentH) {
     const isRed = (y / kerbSegmentH) % 2 === 0;
     g.fillStyle = isRed ? "#e63946" : "#ffffff";
-    // Left kerb
     g.fillRect(0, y, kerbWidth, kerbSegmentH);
-    // Right kerb
     g.fillRect(1024 - kerbWidth, y, kerbWidth, kerbSegmentH);
   }
 
   // Solid white edge lines
-  g.fillStyle = "rgba(255,255,255,0.85)";
+  g.fillStyle = "rgba(255,255,255,0.9)";
   g.fillRect(kerbWidth, 0, 12, 1024);
   g.fillRect(1024 - kerbWidth - 12, 0, 12, 1024);
 
-  // Center double yellow line
-  g.fillStyle = "#ffc107";
+  // Double yellow center line
+  g.fillStyle = "#ffd700";
   g.fillRect(506, 0, 6, 1024);
   g.fillRect(518, 0, 6, 1024);
 
-  // Dashed white lane divider lines (4-lane road setup)
-  g.fillStyle = "rgba(255,255,255,0.75)";
+  // Dashed white lane dividers for 4 lanes
+  g.fillStyle = "rgba(255,255,255,0.8)";
   const dashH = 56;
   const gapH = 40;
   const laneL = 274;
@@ -89,16 +87,16 @@ function symbolTexture(op: PickupOp, value: number) {
 
   const palette =
     op === "+"
-      ? { core: "#00ff88", rim: "#a8ffda", shadow: "#033b1f", bg: "rgba(0,40,20,0.85)" }
+      ? { core: "#00ff88", shadow: "#033b1f", bg: "rgba(0,50,25,0.85)" }
       : op === "x"
-        ? { core: "#ffd700", rim: "#fff2a8", shadow: "#423200", bg: "rgba(45,35,0,0.85)" }
+        ? { core: "#ffd700", shadow: "#423200", bg: "rgba(50,40,0,0.85)" }
         : op === "-"
-          ? { core: "#ff7700", rim: "#ffd2a8", shadow: "#421800", bg: "rgba(45,15,0,0.85)" }
-          : { core: "#ff0055", rim: "#ffa8c5", shadow: "#420014", bg: "rgba(45,0,15,0.85)" }; // ÷ Division
+          ? { core: "#ff7700", shadow: "#421800", bg: "rgba(50,20,0,0.85)" }
+          : { core: "#ff0055", shadow: "#420014", bg: "rgba(50,0,20,0.85)" }; // ÷ Division
 
   g.clearRect(0, 0, 256, 256);
 
-  // Outer radial neon glow
+  // Outer radial glow
   const glow = g.createRadialGradient(128, 128, 20, 128, 128, 128);
   glow.addColorStop(0, palette.core);
   glow.addColorStop(0.5, `${palette.core}66`);
@@ -106,8 +104,8 @@ function symbolTexture(op: PickupOp, value: number) {
   g.fillStyle = glow;
   g.fillRect(0, 0, 256, 256);
 
-  // Rounded octagon face
-  const r = 92;
+  // Octagon badge
+  const r = 90;
   const cx = 128;
   const cy = 128;
   g.beginPath();
@@ -122,18 +120,18 @@ function symbolTexture(op: PickupOp, value: number) {
 
   g.fillStyle = palette.bg;
   g.fill();
-  g.lineWidth = 10;
+  g.lineWidth = 12;
   g.strokeStyle = palette.core;
   g.stroke();
 
   // Glass glare streak
-  g.fillStyle = "rgba(255,255,255,0.22)";
+  g.fillStyle = "rgba(255,255,255,0.25)";
   g.beginPath();
   g.ellipse(108, 80, 56, 18, -0.3, 0, Math.PI * 2);
   g.fill();
 
-  // Chunky bold text
-  g.font = "900 100px Arial Black, Arial, sans-serif";
+  // Chunky text
+  g.font = "900 102px Arial Black, Arial, sans-serif";
   g.textAlign = "center";
   g.textBaseline = "middle";
   g.lineWidth = 16;
@@ -200,17 +198,17 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
   road.receiveShadow = true;
   group.add(road);
 
-  // Underside dirt foundation
+  // Underside foundation
   const under = new THREE.Mesh(
     geo.clone(),
-    new THREE.MeshStandardMaterial({ color: 0x1f1610, roughness: 1, side: THREE.BackSide }),
+    new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 1, side: THREE.BackSide }),
   );
   under.position.y = -1.6;
   group.add(under);
 
-  // ---- Side Guardrails & Crash Barriers
-  const barrierMat = new THREE.MeshStandardMaterial({ color: 0x9099a8, roughness: 0.2, metalness: 0.8 });
-  const reflectorMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 0.8 });
+  // ---- Metallic Side Guardrails with Reflector Lights
+  const barrierMat = new THREE.MeshStandardMaterial({ color: 0x8892a0, roughness: 0.2, metalness: 0.85 });
+  const reflectorMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 1.2 });
 
   for (const sign of [-1, 1]) {
     const cps: THREE.Vector3[] = [];
@@ -221,30 +219,29 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
       cps.push(new THREE.Vector3(p.x + sx * (halfW - 0.1), p.y + 0.45, p.z + sz * (halfW - 0.1)));
     }
     const curve = new THREE.CatmullRomCurve3(cps);
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, cps.length * 2, 0.42, 12, false), barrierMat);
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, cps.length * 2, 0.38, 12, false), barrierMat);
     tube.castShadow = true;
     tube.receiveShadow = true;
     group.add(tube);
 
-    // Glowing yellow reflector posts along the barriers
     for (let i = 0; i < pts.length; i += 12) {
       const p = pts[i];
       const sx = Math.cos(p.yaw) * sign;
       const sz = -Math.sin(p.yaw) * sign;
-      const reflector = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.18), reflectorMat);
+      const reflector = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.55, 0.16), reflectorMat);
       reflector.position.set(p.x + sx * (halfW - 0.1), p.y + 0.65, p.z + sz * (halfW - 0.1));
       group.add(reflector);
     }
   }
 
-  // ---- Scenery (Trees, Grandstands, Floodlights, Mountains)
-  const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 7, 9);
+  // ---- Detailed Jungle Scenery & Foliage
+  const trunkGeo = new THREE.CylinderGeometry(0.42, 0.65, 7, 10);
   const trunkTex = barkTexture("#5e3e26");
   trunkTex.repeat.set(1, 3);
   const trunkMat = new THREE.MeshStandardMaterial({ map: trunkTex, roughness: 0.9 });
-  const leafGeo = new THREE.SphereGeometry(2.5, 12, 10);
+  const leafGeo = new THREE.SphereGeometry(2.6, 14, 12);
   const leafMats = [0x2f9e4a, 0x39b356, 0x1f7f3c, 0x53c765].map(
-    (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 }),
+    (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }),
   );
 
   let rs = 1;
@@ -280,9 +277,9 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
     }
   }
 
-  // Stadium Floodlight Poles along track
-  const poleMat = new THREE.MeshStandardMaterial({ color: 0x404552, roughness: 0.3, metalness: 0.8 });
-  const lampMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfffae6, emissiveIntensity: 1.5 });
+  // Stadium Light Poles
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x303642, roughness: 0.3, metalness: 0.8 });
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x00f0ff, emissiveIntensity: 1.8 });
 
   for (let i = 20; i < pts.length - 20; i += 30) {
     const p = pts[i];
@@ -292,12 +289,12 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
       const x = p.x + sx * (halfW + 2.5);
       const z = p.z + sz * (halfW + 2.5);
 
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 12, 10), poleMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 12, 10), poleMat);
       pole.position.set(x, p.y + 6, z);
       pole.castShadow = true;
       scenery.add(pole);
 
-      const lightBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 0.4), lampMat);
+      const lightBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.4), lampMat);
       lightBox.position.set(x - sx * 0.5, p.y + 11.8, z - sz * 0.5);
       lightBox.rotation.y = p.yaw + (sign * Math.PI) / 4;
       scenery.add(lightBox);
@@ -305,14 +302,14 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
   }
   group.add(scenery);
 
-  // ---- Feature Props: High Visibility 3D Gate Archways (+, -, x, ÷)
+  // ---- Feature Props: High-Tech Neon Energy Speed Arches (+, -, x, ÷)
   const featureMeshes: THREE.Object3D[] = [];
   const rampMat = new THREE.MeshStandardMaterial({
     color: 0x00d9ff,
     roughness: 0.2,
     metalness: 0.8,
-    emissive: 0x0066aa,
-    emissiveIntensity: 0.5,
+    emissive: 0x0088cc,
+    emissiveIntensity: 0.8,
   });
 
   for (const f of path.features) {
@@ -336,74 +333,64 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
       const neonMat = new THREE.MeshStandardMaterial({
         color: colorHex,
         emissive: colorHex,
-        emissiveIntensity: 0.9,
-        roughness: 0.2,
+        emissiveIntensity: 1.2,
+        roughness: 0.1,
       });
 
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a212d, roughness: 0.4, metalness: 0.7 });
-
-      // Gate Arch Pillars (Left & Right standing posts)
-      const pillarW = 4.2;
+      // Sleek Light Arch Pillars (Left & Right standing posts)
+      const pillarW = 3.6;
       for (const side of [-1, 1]) {
-        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.8, 0.35), frameMat);
-        pillar.position.set((pillarW / 2) * side, 2.4, 0);
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 4.4, 16), neonMat);
+        pillar.position.set((pillarW / 2) * side, 2.2, 0);
         pillar.castShadow = true;
         gate.add(pillar);
-
-        const neonStrip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 4.6, 0.12), neonMat);
-        neonStrip.position.set((pillarW / 2) * side, 2.4, 0.16);
-        gate.add(neonStrip);
       }
 
-      // Top Arch Bar across the gate
-      const topBar = new THREE.Mesh(new THREE.BoxGeometry(pillarW + 0.4, 0.4, 0.4), frameMat);
-      topBar.position.set(0, 4.8, 0);
-      gate.add(topBar);
-
-      const topNeon = new THREE.Mesh(new THREE.BoxGeometry(pillarW + 0.2, 0.16, 0.16), neonMat);
-      topNeon.position.set(0, 4.8, 0.2);
-      gate.add(topNeon);
+      // Top Arch Beam
+      const topBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, pillarW, 16), neonMat);
+      topBeam.rotation.z = Math.PI / 2;
+      topBeam.position.set(0, 4.4, 0);
+      gate.add(topBeam);
 
       // Central Floating 3D Arithmetic Symbol Badge
       const tex = symbolTexture(op, val);
       const badge = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.35, 1.35, 0.2, 32),
+        new THREE.CylinderGeometry(1.25, 1.35, 0.18, 32),
         new THREE.MeshStandardMaterial({
           map: tex,
           roughness: 0.2,
           metalness: 0.2,
           emissive: colorHex,
-          emissiveIntensity: 0.35,
+          emissiveIntensity: 0.45,
         }),
       );
       badge.rotation.x = Math.PI / 2;
-      badge.position.y = 2.6;
+      badge.position.y = 2.5;
       badge.castShadow = true;
       gate.add(badge);
 
-      // Glowing sprite aura behind badge
+      // Glowing aura behind badge
       const aura = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: tex,
           transparent: true,
-          opacity: 0.4,
+          opacity: 0.45,
           depthWrite: false,
         }),
       );
-      aura.scale.set(3.4, 3.4, 1);
-      aura.position.y = 2.6;
+      aura.scale.set(3.2, 3.2, 1);
+      aura.position.y = 2.5;
       gate.add(aura);
 
       // Road chevron marker leading into gate
       const chevron = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.6, 2.8),
-        new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.65 }),
+        new THREE.PlaneGeometry(3.2, 2.5),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.75 }),
       );
       chevron.rotation.x = -Math.PI / 2;
-      chevron.position.set(0, 0.03, 0.5);
+      chevron.position.set(0, 0.03, 0.4);
       gate.add(chevron);
 
-      gate.userData.spin = false;
       gate.userData.bob = true;
       obj = gate;
     } else if (f.type === "ramp") {
@@ -419,7 +406,7 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
       const hazard = new THREE.Group();
       const base = new THREE.Mesh(
         new THREE.BoxGeometry(3.8, 0.35, 1.2),
-        new THREE.MeshStandardMaterial({ color: 0xff3344, roughness: 0.3, emissive: 0x990011, emissiveIntensity: 0.6 }),
+        new THREE.MeshStandardMaterial({ color: 0xff3344, roughness: 0.3, emissive: 0xcc0022, emissiveIntensity: 0.8 }),
       );
       base.position.y = 0.18;
       base.castShadow = true;
@@ -436,7 +423,7 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
     featureMeshes.push(wrap);
   }
 
-  // Start & Finish Overhead Banners
+  // Start & Finish Banners
   for (const [s, title, color] of [
     [4, "START", 0x00f0ff],
     [path.length - 8, "FINISH", 0xffd700],
@@ -448,7 +435,7 @@ export function buildWorld(scene: THREE.Scene, path: TrackPath) {
 
     const bar = new THREE.Mesh(
       new THREE.BoxGeometry(def.width + 4, 1.2, 0.8),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.5, emissive: color, emissiveIntensity: 0.4 }),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.5, emissive: color, emissiveIntensity: 0.5 }),
     );
     bar.position.y = 7.5;
     bar.castShadow = true;
