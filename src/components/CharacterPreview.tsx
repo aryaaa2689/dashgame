@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { makeCharacter, animateChar } from "@/game/characters";
+import { makeCar, animateCar } from "@/game/cars";
 
 export default function CharacterPreview({
   color,
@@ -28,8 +28,8 @@ export default function CharacterPreview({
 
     const scene = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(34, canvas.clientWidth / canvas.clientHeight, 0.1, 60);
-    cam.position.set(0, 1.75, 6.2);
-    cam.lookAt(0, 1.15, 0);
+    cam.position.set(2.8, 2.2, 5.2);
+    cam.lookAt(0, 0.5, 0);
 
     scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x16301f, 0.7));
     const key = new THREE.DirectionalLight(0xfff2d8, 2.6);
@@ -56,14 +56,14 @@ export default function CharacterPreview({
     floor.receiveShadow = true;
     scene.add(floor);
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(1.55, 1.62, 64),
+      new THREE.RingGeometry(1.8, 1.88, 64),
       new THREE.MeshBasicMaterial({ color: 0x35e08a, transparent: true, opacity: 0.35, side: THREE.DoubleSide }),
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.01;
     scene.add(ring);
 
-    const parts = makeCharacter(color, hat);
+    const parts = makeCar(color, hat);
     parts.root.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) {
         o.castShadow = true;
@@ -78,8 +78,9 @@ export default function CharacterPreview({
       raf = requestAnimationFrame(loop);
       const dt = clock.getDelta();
       t += dt;
-      parts.root.rotation.y = Math.sin(t * 0.5) * 0.55 + Math.PI;
-      animateChar(parts, t, 0.35, 0, 0);
+      parts.root.rotation.y = Math.sin(t * 0.5) * 0.45 + Math.PI * 0.82;
+      const steer = Math.sin(t * 2) * 0.3;
+      animateCar(parts, t, 0.2, 0, 0, steer, false);
       ring.rotation.z += dt * 0.4;
       renderer.render(scene, cam);
     };
